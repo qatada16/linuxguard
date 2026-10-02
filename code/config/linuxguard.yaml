@@ -1,0 +1,23 @@
+# Relative paths are resolved from this file's directory.
+# These settings describe the planned pipeline; only validation runs at present.
+collector:
+  ssh_host: lg
+  log_path: /var/log/audit/audit.log
+  state_path: ../data/collector-state.json
+
+storage:
+  database: ../data/linuxguard.db
+
+detection:
+  rules_path: rules.yaml
+  window_seconds: 60
+
+ml:
+  model_path: ../data/model.joblib
+  n_estimators: 200
+  random_state: 42
+  threshold_percentile: 1.0
+
+ai:
+  mode: standard
+  timeout_seconds: 15
