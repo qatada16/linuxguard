@@ -1,0 +1,23 @@
+# Lab telemetry for the x86_64 Debian target; does not delete existing rules.
+-b 8192
+
+# Executed processes, including execveat and 32-bit compatibility calls.
+-a always,exit -F arch=b64 -S execve,execveat -k lg_exec
+-a always,exit -F arch=b32 -S execve,execveat -k lg_exec
+
+# Mode changes provide evidence for later SUID detection.
+-a always,exit -F arch=b64 -S chmod,fchmod,fchmodat -k lg_mode
+-a always,exit -F arch=b32 -S chmod,fchmod,fchmodat -k lg_mode
+
+-w /etc/passwd -p wa -k lg_identity
+-w /etc/shadow -p wa -k lg_identity
+-w /etc/group -p wa -k lg_identity
+-w /etc/sudoers -p wa -k lg_priv
+-w /etc/sudoers.d -p wa -k lg_priv
+-w /etc/ssh/sshd_config -p wa -k lg_ssh
+-w /home/bonzo/.ssh -p wa -k lg_ssh
+-w /etc/crontab -p wa -k lg_persist
+-w /etc/cron.d -p wa -k lg_persist
+-w /var/spool/cron -p wa -k lg_persist
+-w /etc/systemd/system -p wa -k lg_persist
+-w /etc/shadow -p r -k lg_shadow_read
