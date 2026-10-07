@@ -7,18 +7,20 @@ import pytest
 
 
 CODE_DIR = Path(__file__).resolve().parents[1]
-SCRIPT = CODE_DIR / "scripts" / "setup-audit.sh"
+SCRIPTS = [CODE_DIR / "scripts" / name for name in ("setup-audit.sh", "check-audit-triggers.sh")]
 RULES = CODE_DIR / "config" / "audit" / "linuxguard.rules"
 
 
-def test_setup_script_has_valid_shell_syntax():
-    result = subprocess.run(["sh", "-n", str(SCRIPT)], capture_output=True, text=True)
+@pytest.mark.parametrize("script", SCRIPTS, ids=lambda path: path.name)
+def test_setup_script_has_valid_shell_syntax(script):
+    result = subprocess.run(["sh", "-n", str(script)], capture_output=True, text=True)
     assert result.returncode == 0, result.stderr
 
 
 @pytest.mark.skipif(os.geteuid() == 0, reason="Tests unprivileged invocation")
-def test_setup_script_refuses_unprivileged_invocation():
-    result = subprocess.run(["sh", str(SCRIPT)], capture_output=True, text=True)
+@pytest.mark.parametrize("script", SCRIPTS, ids=lambda path: path.name)
+def test_setup_script_refuses_unprivileged_invocation(script):
+    result = subprocess.run(["sh", str(script)], capture_output=True, text=True)
     assert result.returncode == 1
     assert "sudo sh" in result.stderr
     assert "backed up" not in result.stdout
