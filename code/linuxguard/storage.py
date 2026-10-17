@@ -130,6 +130,31 @@ class EvidenceStore:
                     updated += 1
         return InsertResult(inserted, updated, unchanged)
 
+    def insert_alert(self, alert, event_ids) -> int:
+        """Insert an alert and its evidence atomically; identical replays reuse its ID."""
+        event_ids = sorted(set(event_ids))
+        if not event_ids:
+            raise ValueError("an alert needs at least one evidence event")
+        values = {name: alert.get(name) for name in _ALERT_COLUMNS}
+        values["ts"] = utc_timestamp(alert["ts"])
+        for name in ("window_start", "window_end"):
+            if values[name] is not None:
+                values[name] = utc_timestamp(values[name])
+        values["status"] = alert.get("status", "new")
+        identity = {key: value for key, value in values.items() if key != "status"}
+        fingerprint = hashlib.sha256(json.dumps([identity, event_ids], sort_keys=True).encode()).hexdigest()
+        columns = ", ".join(_ALERT_COLUMNS)
+        placeholders = ", ".join("?" for _ in _ALERT_COLUMNS)
+        with self.connection:
+            self.connection.execute(
+                f"INSERT INTO alerts (fingerprint, {columns}) VALUES (?, {placeholders}) "
+                "ON CONFLICT(fingerprint) DO NOTHING",
+                [fingerprint, *(values[name] for name in _ALERT_COLUMNS)],
+            )
+            alert_id = self.connection.execute("SELECT id FROM alerts WHERE fingerprint=?", (fingerprint,)).fetchone()[0]
+            self.connection.executemany("INSERT INTO alert_evidence VALUES (?, ?) ON CONFLICT DO NOTHING",
+                                        [(alert_id, event_id) for event_id in event_ids])
+        return alert_id
 
     def events_between(self, start, end, *, user=None) -> list[dict]:
         """Return normalized events plus database IDs in the half-open interval [start, end)."""
@@ -144,3 +169,10 @@ class EvidenceStore:
         rows = self.connection.execute(query + " ORDER BY ts, CAST(serial AS INTEGER), host", args)
         return [dict(json.loads(row["event_json"]), id=row["id"]) for row in rows]
 
+    def timeline(self, alert_id) -> list[dict]:
+        """Return the alert's direct evidence; wider correlation belongs to Phase 8."""
+        rows = self.connection.execute(
+            "SELECT e.id, e.event_json FROM events e JOIN alert_evidence a ON a.event_id=e.id "
+            "WHERE a.alert_id=? ORDER BY e.ts, CAST(e.serial AS INTEGER), e.host", (alert_id,),
+        )
+        return [dict(json.loads(row["event_json"]), id=row["id"]) for row in rows]
