@@ -1,2 +1,147 @@
-# No detection rules are implemented yet. Add tested rules during Phase 6.
-[]
+# LinuxGuard detection rules (Phase 6). Each rule has a unique id, a title, a severity
+# (low/medium/high/critical) and exactly one of `match` (single event) or `threshold`
+# (count within a sliding window). File rules require event_type SYSCALL and success true,
+# so failed attempts and CONFIG_CHANGE-only records never fire. Read/write intent comes
+# from PATH nametypes and decoded open flags, not from an audit key alone. See code/README.md.
+
+- id: R01
+  title: Shadow file read by an unexpected process
+  severity: high
+  match:
+    key: lg_shadow_read
+    event_type: SYSCALL
+    success: true
+    reads_any: ["/etc/shadow"]
+    exe_not_in:
+      - /usr/sbin/unix_chkpwd
+      - /usr/sbin/unix_update
+      - /usr/bin/login
+      - /usr/sbin/sshd
+      - /usr/lib/openssh/sshd-session
+      - /usr/bin/sudo
+      - /usr/bin/su
+      - /usr/bin/passwd
+      - /usr/sbin/chpasswd
+      - /usr/bin/chage
+      - /usr/bin/chsh
+      - /usr/bin/chfn
+      - /usr/sbin/useradd
+      - /usr/sbin/usermod
+      - /usr/sbin/userdel
+      - /usr/sbin/cron
+
+- id: R02
+  title: passwd, shadow or group written outside account tools
+  severity: high
+  match:
+    key: lg_identity
+    event_type: SYSCALL
+    success: true
+    writes_any: ["/etc/passwd", "/etc/shadow", "/etc/group", "/etc/gshadow"]
+    exe_not_in:
+      - /usr/bin/passwd
+      - /usr/sbin/chpasswd
+      - /usr/bin/chage
+      - /usr/bin/chsh
+      - /usr/bin/chfn
+      - /usr/bin/gpasswd
+      - /usr/sbin/useradd
+      - /usr/sbin/usermod
+      - /usr/sbin/userdel
+      - /usr/sbin/groupadd
+      - /usr/sbin/groupmod
+      - /usr/sbin/groupdel
+      - /usr/sbin/vipw
+
+- id: R03
+  title: Sudoers rule created or edited
+  severity: high
+  match:
+    key: lg_priv
+    event_type: SYSCALL
+    success: true
+    writes_any: ["/etc/sudoers", "/etc/sudoers.d/*"]
+
+- id: R04
+  title: Repeated authentication failures from one source
+  severity: high
+  threshold:
+    event_type: USER_AUTH
+    success: false
+    count: 5
+    within_seconds: 60
+    group_by: [host, src_ip]
+    group_by_fallback: [host, exe, terminal]
+
+- id: R05
+  title: Successful authentication after repeated failures
+  severity: high
+  threshold:
+    event_type: USER_AUTH
+    success: false
+    count: 3
+    within_seconds: 120
+    group_by: [host, src_ip]
+    group_by_fallback: [host, exe, terminal]
+    followed_by:
+      event_type: USER_AUTH
+      success: true
+
+- id: R06
+  title: Interactive shell executed by a service account
+  severity: medium
+  match:
+    key: lg_exec
+    event_type: SYSCALL
+    success: true
+    executes_any:
+      - "*/sh"
+      - "*/bash"
+      - "*/dash"
+      - "*/zsh"
+      - "*/ksh"
+      - "*/fish"
+    uid_ranges: [[1, 999], [65534, 65534]]
+
+- id: R07
+  title: Execution from a temporary or world-writable directory
+  severity: high
+  match:
+    key: lg_exec
+    event_type: SYSCALL
+    success: true
+    executes_any: ["/tmp/*", "/var/tmp/*", "/dev/shm/*"]
+
+- id: R08
+  title: Cron or systemd persistence file created
+  severity: medium
+  match:
+    key: lg_persist
+    event_type: SYSCALL
+    success: true
+    writes_any:
+      - /etc/crontab
+      - /etc/cron.d/*
+      - /var/spool/cron/*
+      - /etc/systemd/system/*
+
+- id: R09
+  title: SSH server config or authorized_keys written
+  severity: high
+  match:
+    key: lg_ssh
+    event_type: SYSCALL
+    success: true
+    writes_any:
+      - /etc/ssh/sshd_config
+      - "*/.ssh/authorized_keys"
+      - "*/.ssh/authorized_keys2"
+
+- id: R10
+  title: SUID bit set on a file
+  severity: high
+  match:
+    key: lg_mode
+    event_type: SYSCALL
+    success: true
+    mode_bits_any: "4000"

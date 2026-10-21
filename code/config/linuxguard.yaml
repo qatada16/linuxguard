@@ -1,5 +1,5 @@
 # Relative paths are resolved from this file's directory.
-# These settings describe the planned pipeline; only validation runs at present.
+# Collector settings are active; detection/ML/AI stages are not implemented yet.
 collector:
   ssh_host: lg
   log_path: /var/log/audit/audit.log
@@ -11,6 +11,7 @@ storage:
 detection:
   rules_path: rules.yaml
   window_seconds: 60
+  settle_seconds: 10
 
 ml:
   model_path: ../data/model.joblib

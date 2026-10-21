@@ -4,6 +4,8 @@ from pathlib import Path
 
 import yaml
 
+from linuxguard.rules import load_rules
+
 
 def load_config(path: str | Path) -> dict:
     """Validate foundation settings and resolve local paths from the YAML file."""
@@ -32,6 +34,7 @@ def load_config(path: str | Path) -> dict:
 
     for section, field in (
         ("detection", "window_seconds"),
+        ("detection", "settle_seconds"),
         ("ml", "n_estimators"),
         ("ai", "timeout_seconds"),
     ):
@@ -60,6 +63,5 @@ def load_config(path: str | Path) -> dict:
         rules = yaml.safe_load(rules_path.read_text(encoding="utf-8"))
     except (OSError, UnicodeError, yaml.YAMLError) as exc:
         raise ValueError(f"cannot read rules file {rules_path}: {exc}") from exc
-    if not isinstance(rules, list):
-        raise ValueError("rules file must contain a YAML list (use [] until rules exist)")
+    config["detection"]["rules"] = load_rules(rules)
     return config
