@@ -169,6 +169,12 @@ class EvidenceStore:
         rows = self.connection.execute(query + " ORDER BY ts, CAST(serial AS INTEGER), host", args)
         return [dict(json.loads(row["event_json"]), id=row["id"]) for row in rows]
 
+    def events(self) -> list[dict]:
+        """Return every stored event with its database id, in chronological order."""
+        rows = self.connection.execute(
+            "SELECT id, event_json FROM events ORDER BY ts, CAST(serial AS INTEGER), host")
+        return [dict(json.loads(row["event_json"]), id=row["id"]) for row in rows]
+
     def timeline(self, alert_id) -> list[dict]:
         """Return the alert's direct evidence; wider correlation belongs to Phase 8."""
         rows = self.connection.execute(

@@ -33,6 +33,9 @@ def main() -> None:
     pipeline.add_argument("--database", type=Path, help="SQLite file; defaults to the configured database")
     pipeline.add_argument("--host", help="Source host; defaults to SSH reader hostname, or unknown for local replay")
     pipeline.add_argument("--passwd-file", type=Path, help="Captured target passwd file for UID names")
+    pipeline.add_argument("--detect", action="store_true", help="Run configured rules after ingestion")
+    pipeline.add_argument("--settled", action="store_true",
+                          help="Treat the capture as complete (requires --file --detect); skips the settle horizon")
     args = parser.parse_args()
     try:
         if args.command == "parse":
@@ -43,15 +46,24 @@ def main() -> None:
             return
         config = load_config(args.config)
         if args.command == "pipeline":
+            if args.settled and not (args.file and args.detect):
+                parser.error("--settled requires --file and --detect; live captures are never settled")
             result = run_pipeline(output=args.output, state=args.state or config["collector"]["state_path"],
                                   database=args.database or config["storage"]["database"], file=args.file,
                                   ssh_host=None if args.file else config["collector"]["ssh_host"],
                                   log_path=config["collector"]["log_path"], host=args.host,
-                                  passwd_file=args.passwd_file)
+                                  passwd_file=args.passwd_file,
+                                  rules=config["detection"]["rules"] if args.detect else None,
+                                  settle_seconds=config["detection"]["settle_seconds"], settled=args.settled)
             print(f"Collected {result.collection.bytes_written} new bytes; parsed {len(result.parsed.events)} events")
             print(f"Database: {result.stored.inserted} inserted, {result.stored.updated} updated, "
                   f"{result.stored.unchanged} unchanged")
-            print("Batch ingestion only: later polls can enrich events; no detection was run.")
+            if result.detection is None:
+                print("Batch ingestion only: later polls can enrich events; no detection was run.")
+            else:
+                d = result.detection
+                print(f"Detection: {d.new_alerts} new alert(s), {d.alerts} total; "
+                      f"evaluated {d.evaluated} events, deferred {d.deferred} unsettled.")
             return
         if args.command == "collect":
             result = collect(output=args.output, state=args.state or config["collector"]["state_path"],
@@ -65,6 +77,7 @@ def main() -> None:
         print(f"SSH target: {config['collector']['ssh_host']}")
         print(f"Database: {config['storage']['database']}")
         print(f"AI mode: {config['ai']['mode']}")
+        print(f"Detection rules loaded: {len(config['detection']['rules'])}")
         print("Configuration check only: no collection or detection was run.")
     except (ValueError, OSError, CollectionError, sqlite3.Error) as exc:
         label = "Configuration" if args.command == "check-config" else args.command.capitalize()

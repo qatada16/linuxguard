@@ -226,3 +226,25 @@ def _threshold_alerts(rule, events):
             groups[group] = []
 
 
+def detect(store: EvidenceStore, rules, *, settle_seconds=10, settled=False) -> DetectionResult:
+    """Evaluate rules over settled stored events and persist evidence-linked alerts."""
+    events = store.events()
+    deferred = 0
+    if not settled and events:
+        newest = datetime.fromisoformat(events[-1]["ts"].replace("Z", "+00:00"))
+        horizon = utc_timestamp((newest - timedelta(seconds=settle_seconds)).isoformat())
+        kept = [event for event in events if event["ts"] <= horizon]
+        deferred = len(events) - len(kept)
+        events = kept
+    before = store.connection.execute("SELECT count(*) FROM alerts").fetchone()[0]
+    for rule in rules:
+        if "match" in rule:
+            for event in events:
+                if _matches(rule["match"], event):
+                    alert, ids = _alert(rule, [event])
+                    store.insert_alert(alert, ids)
+        else:
+            for alert, ids in _threshold_alerts(rule, events):
+                store.insert_alert(alert, ids)
+    after = store.connection.execute("SELECT count(*) FROM alerts").fetchone()[0]
+    return DetectionResult(len(events), deferred, after, after - before)
