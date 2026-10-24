@@ -6,7 +6,9 @@ and a scripted development sample, project foundation, collector/parser, and
 SQLite ingestion. Phase 6 (detection rules) is next. The hours-long representative
 ML baseline, scenarios and evaluation remain pending.
 
-**Current update — 2026-11-28:** 83 tests pass. SSH and unprivileged audit-log reading
+**Current update — 2026-11-28:** 115 tests pass. Phase 6 (configurable
+detection rules) is implemented and verified on the real captures; Phase 9's scenario
+runner and catalogue are in place with one development run staged for the user. SSH and unprivileged audit-log reading
 were reverified with the new agent; auditd is active. Historical verification of
 all seven audit keys and snapshot `rules-loaded` is recorded in the handoff.
 SQLite ingestion of the frozen 1,151-event real capture succeeded; the second run
@@ -196,11 +198,11 @@ and its post-capture status check are complete.
 
 ---
 
-## Phase 5: Evidence storage (SQLite)
+## Phase 5: Evidence storage (SQLite) — ✅ Complete
 
 **Goal:** a local database for events, alerts and the evidence linking them (proposal step 4, objective 5).
 
-- [x] **5.1 Schema** (`storage.py`): events, alerts, evidence links and features.
+- [x] ✅ **5.1 Schema** (`storage.py`): events, alerts, evidence links and features.
   The outline below is implemented with additional identity/evidence fields:
   `host`, `audit_id`, complete `event_json`, lossless raw BLOBs, and unique
   `(host, ts, serial)` event identity. Alert replay uses a deterministic fingerprint.
@@ -216,20 +218,24 @@ and its post-capture status check are complete.
   alert_evidence(alert_id INT, event_id INT)           -- many-to-many
   features(window_start TEXT, window_end TEXT, user TEXT, f_json TEXT)  -- for ML
   ```
-- [x] **5.2** Indexes on `events(ts)`, `events(user, ts)`, `alerts(ts)`.
-- [x] **5.3** `EvidenceStore`: `insert_events`, `insert_alert(alert, event_ids)`,
+- [x] ✅ **5.2 Indexes** on `events(ts)`, `events(user, ts)`, `alerts(ts)`.
+- [x] ✅ **5.3 Functions** in `EvidenceStore`: `insert_events`, `insert_alert(alert, event_ids)`,
   `events_between(t0, t1, user=...)`, and direct-evidence `timeline(alert_id)`.
   Foreign keys and batch transactions prevent orphan links and partial writes.
   Late cumulative records update the same ID; shorter stale groups do not truncate
   evidence. Conflicting groups roll back the batch. Timestamps use fixed-width UTC.
-- [x] **5.4 Pipeline** (`pipeline.py` + CLI `pipeline`): collect → parse → upsert.
+- [x] ✅ **5.4 Pipeline** (`pipeline.py` + CLI `pipeline`): collect → parse → upsert.
   The real frozen capture inserted 1,151 events, then added/updated zero rows on
   replay. Live SSH ingestion and database-failure recovery are verified.
 
-**Implemented and verified:** a real replay database has 1,151 events; the host's
-`/usr/bin/sqlite3` reports sensible record types, `integrity_check = ok` and no
-foreign-key violations. The new scripted sample is in `data/linuxguard.db` as 508
-events, with zero inserted/updated rows on repeat replay and matching raw bytes.
+**Verification complete:**
+
+- [x] Frozen real setup capture: 1,151 events stored and sensible record types inspected.
+- [x] Scripted development sample: 508 events stored in `code/data/linuxguard.db`.
+- [x] Repeat replay: zero inserted rows, zero updated rows, and zero new bytes collected.
+- [x] SQLite integrity check: `ok`; foreign-key check: no violations.
+- [x] Stored raw event groups independently match the original capture bytes.
+
 Use a separate database for independent snapshot runs.
 The Phase 2 development sample's provenance and post-capture audit-loss check are
 recorded. Actual detectors and automatic stream finalization are later work.
@@ -240,7 +246,9 @@ recorded. Actual detectors and automatic stream finalization are later work.
 
 **Goal:** configurable rules for predefined suspicious behaviour (objective 3). Keep it to **6 to 10 rules**, because the proposal says "a small set".
 
-- [ ] **6.1 Rule format** (`config/rules.yaml`), for example:
+- [x] **6.1 Rule format** (`config/rules.yaml`): validated by `linuxguard/rules.py`
+  (`load_rules`). Each rule has a unique id, title, severity and exactly one of
+  `match` or `threshold`. Example:
 
   ```yaml
   - id: R001
@@ -252,7 +260,10 @@ recorded. Actual detectors and automatic stream finalization are later work.
     severity: high
     threshold: {event_type: USER_AUTH, success: false, count: 5, within_seconds: 60, group_by: src_ip}
   ```
-- [ ] **6.2 Proposed rule set** (adjust to what your logs show):
+- [x] **6.2 Rule set** — all ten proposed rules shipped (R01–R10). Two are narrowed
+  and documented: R06's "shell from /tmp" is covered by R07 (no parent correlation),
+  and R10 fires on any successful SUID set (a "new file" cannot be proven from one
+  event). Predicates were chosen from the real normalized fields, not audit keys alone.
   1. Shadow read by an unexpected process.
   2. Write to `/etc/passwd` or `/etc/shadow` outside `useradd`/`passwd`.
   3. New file in `/etc/sudoers.d/` or edit of `/etc/sudoers`.
@@ -263,8 +274,16 @@ recorded. Actual detectors and automatic stream finalization are later work.
   8. New cron or systemd unit created.
   9. Edit of `sshd_config` or `authorized_keys`.
   10. `chmod +s` / SUID bit set on a new file.
-- [ ] **6.3 Engine** (`rules.py`): two rule types, **match** (single event) and **threshold** (count in a sliding window). Each alert stores the rule id, a human-readable `reason`, and the **ids of the events that triggered it** (evidence).
-- [ ] **6.4 Tests:** per rule, one log snippet that must fire it and one near-miss that must not. This is your regression suite and it feeds Phase 10.
+- [x] **6.3 Engine** (`rules.py`): **match** (single event) and **threshold** (sliding
+  window, with a missing-field group fallback and success-after-failure). Alerts store
+  the rule id, a readable `reason`, and the exact triggering event ids via
+  `EvidenceStore.insert_alert`. Detection runs in the pipeline with `--detect`; a
+  settle horizon defers unsettled live events. Replay is idempotent.
+- [x] **6.4 Tests:** `tests/test_rules.py` gives each rule a firing case and a realistic
+  near-miss, plus threshold boundaries, grouping isolation, missing fields, evidence
+  links, replay idempotency, the settle horizon, and format validation (synthetic
+  fixtures, clearly labelled). Real replay: the benign sample (508 events) produced 0
+  alerts; `setup-and-probes` (1,151) produced R03 + R08 on the authorized probe creates.
 
 **Done when:** each rule has a firing test and a non-firing test, and running the pipeline on `sample_benign.log` produces few or no alerts. Any that appear are false positives to tune now.
 
@@ -406,11 +425,11 @@ The proposal's expected outcome 7 asks for technical documentation covering arch
 | # | Milestone | Proposal outcome it covers | Status |
 |---|---|---|---|
 | M1 | Rules loaded + development sample captured (Phase 2) | 1 | Complete |
-| M2 | Parser + SQLite pipeline (Phases 3 to 5) | 1, 3 | Complete; 83 tests pass across the implemented project |
-| M3 | Rule engine with tests (Phase 6) | 2 | Next |
+| M2 | Parser + SQLite pipeline (Phases 3 to 5) | 1, 3 | ✅ Complete; 83 tests pass across the implemented project |
+| M3 | Rule engine with tests (Phase 6) | 2 | ✅ Complete; 115 tests pass; 0 alerts on benign sample, 2 true-positive probe alerts on the mixed capture |
 | M4 | Isolation Forest trained and scoring (Phase 7) | 2 | Pending; broader baseline required |
 | M5 | Dashboard, timeline, reports (Phase 8) | 4 | Pending |
-| M6 | Scenarios and labels (Phase 9) | 6 | Pending |
+| M6 | Scenarios and labels (Phase 9) | 6 | Runner, catalogue and host tests done; one development run staged for the user; 10× evaluation runs pending Phase 7 |
 | M7 | Evaluation A vs B (Phase 10) | 6 | Pending |
 | M8 | AI explanations + fallback (Phase 11) | 5 | Pending; optional AI integration |
 | M9 | Documentation and demo (Phase 12) | 7 | Setup/handoff maintained; final results, report and demo pending |

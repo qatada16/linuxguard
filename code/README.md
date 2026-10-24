@@ -1,8 +1,9 @@
 # LinuxGuard development
 
-The project foundation, incremental collector, batch audit parser, and SQLite
-ingestion pipeline are ready. Detection, ML, dashboard, scenario evaluation, and
-reports are still pending; their implementation modules remain placeholders.
+The project foundation, incremental collector, batch audit parser, SQLite
+ingestion pipeline, configurable rule engine, and a labelled scenario runner are
+ready. ML, dashboard, evaluation, and reports are still pending; their modules
+remain placeholders.
 
 ## Setup and checks
 
@@ -15,7 +16,7 @@ uv run --locked --inexact python -m linuxguard check-config
 uv run --locked --inexact pytest
 ```
 
-Last verified 2026-11-28: **83 tests pass**.
+Last verified 2026-11-28: **115 tests pass**.
 
 `uv.lock` pins direct and transitive dependencies. `--inexact` keeps any unrelated
 packages already installed in the existing virtual environment. A fresh checkout
@@ -160,6 +161,74 @@ The features table is ready for Phase 7; feature computation is not implemented.
 New databases use mode `600`. Malformed input preserves the raw capture and stops
 ingestion before database writes. Database failure preserves the capture/cursor;
 rerun after resolving it to replay the cumulative evidence.
+
+## Detection rules
+
+Rules are data in [config/rules.yaml](config/rules.yaml); the engine is
+[linuxguard/rules.py](linuxguard/rules.py). Each rule has a unique `id`, a `title`,
+a `severity` (low/medium/high/critical) and exactly one of:
+
+- `match` — a single event. Predicates are ANDed: `key`, `event_type`, `success`,
+  `exe_in`/`exe_not_in`, `reads_any`/`writes_any`/`executes_any` (glob lists over
+  PATH evidence), `uid_ranges`, and `mode_bits_any` (octal). `check-config` reports
+  how many rules loaded and rejects an invalid file.
+- `threshold` — a count within a sliding window: `event_type`, `success`, `count`,
+  `within_seconds`, `group_by`, an optional `group_by_fallback` used when a primary
+  group field is missing (so events with no source IP are never merged), and an
+  optional `followed_by` for success-after-failure.
+
+Read versus write intent comes from PATH nametypes and decoded open flags, and a
+SUID bit from the chmod-family mode **argument** — never from an audit key or an
+existing file mode alone. File rules require `event_type: SYSCALL` and `success:
+true`, so failed attempts and `CONFIG_CHANGE` records do not fire.
+
+The ten shipped rules cover: shadow read by an unexpected process (R01), identity
+file writes outside account tools (R02), sudoers changes (R03), repeated auth
+failures (R04) and success after failures (R05), a shell run by a service account
+(R06), execution from a temporary directory (R07), cron/systemd persistence (R08),
+sshd_config/authorized_keys writes (R09), and setting a SUID bit (R10). Two
+proposed behaviours are intentionally narrowed, and documented in the handoff:
+R06's "shell from /tmp" is covered by R07 (no parent-process correlation), and R10
+fires on any successful SUID set because "on a new file" cannot be established from
+one event.
+
+Run detection as part of the pipeline. `--settled` treats a finished offline
+capture as complete; without it, events newer than `detection.settle_seconds`
+(default 10 s) are deferred until a later poll, because the batch parser cannot tell
+when the newest live event is complete:
+
+```bash
+uv run --locked --inexact python -m linuxguard pipeline --file data/captures/scripted-benign-20261128/sample.audit --output data/experiments/sample-replay.audit --state data/experiments/sample-replay-state.json --database data/experiments/sample-rules.db --host linuxguard-target --passwd-file data/captures/scripted-benign-20261128/target-passwd --detect --settled
+```
+
+Alerts carry `source='rule'`, the rule id, severity, a deterministic timestamp, a
+readable reason, and links to the exact triggering event ids (`EvidenceStore.timeline`).
+Detection is a pure function of stored events, so replaying identical evidence adds
+no duplicate alerts or evidence links and preserves investigation status.
+
+On the real development captures: the scripted benign sample (508 events) produced
+**0 alerts**; the mixed `setup-and-probes` capture (1,151 events) produced exactly
+**2** — R03 and R08 on the authorized trigger-verification probe files created in
+`/etc/sudoers.d` and `/etc/cron.d`. Those are real creation events, not false
+positives, and the `.ssh` probe correctly did not match R09 (it is not an
+`authorized_keys` file).
+
+## Labelled scenarios (Phase 9)
+
+[scenarios/run.py](scenarios/run.py) generates labelled benign and malicious audit
+telemetry for evaluation. It runs **only** as root on `linuxguard-target`; every
+action is inert, reversible and confined to the VM on loopback, each scenario has a
+cleanup and a clean-verify step, and labels come from the catalogue, never from
+detector output. List the catalogue (no root, no changes) with:
+
+```bash
+python3 scenarios/run.py --list
+```
+
+Repeated-failed-authentication scenarios (R04/R05) are deferred because this VM has
+no user-creation tool; those rules are covered by synthetic unit tests and by the
+real mistyped logins already in the setup capture. Hold the 10× evaluation runs
+until the rules are frozen and Phase 7 exists, so test data never tunes the rules.
 
 ## SSH access to the VM
 
