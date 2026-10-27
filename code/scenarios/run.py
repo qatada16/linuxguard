@@ -41,7 +41,9 @@ def utc_now() -> str:
 
 
 def sh(*argv, check=True, **kwargs):
-    return subprocess.run(argv, check=check, capture_output=True, text=True, timeout=60, **kwargs)
+    if "stdout" not in kwargs and "stderr" not in kwargs:
+        kwargs["capture_output"] = True  # but not when a caller redirects a stream itself
+    return subprocess.run(argv, check=check, text=True, timeout=60, **kwargs)
 
 
 def as_service(*argv):
@@ -112,7 +114,7 @@ def mal_tmp_exec(ctx):  # R07
     script = Path("/dev/shm/lg-scenario.sh")
     _drop(script, "#!/bin/sh\necho linuxguard-scenario >/dev/null\n")
     sh("chmod", "0755", str(script))
-    sh("/bin/sh", str(script))
+    sh(str(script))  # execute directly so the script path is the execve target (R07 sees /dev/shm)
 
 def mal_tmp_exec_clean(ctx):
     Path("/dev/shm/lg-scenario.sh").unlink(missing_ok=True)
