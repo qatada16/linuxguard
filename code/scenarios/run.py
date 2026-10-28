@@ -17,6 +17,7 @@ synthetic USER_AUTH records and by the real mistyped logins already in the setup
 """
 
 import argparse
+import base64
 import csv
 from dataclasses import dataclass, field
 from datetime import datetime, timezone
@@ -41,6 +42,7 @@ def utc_now() -> str:
 
 
 def sh(*argv, check=True, **kwargs):
+    kwargs.setdefault("stdin", subprocess.DEVNULL)  # never hang waiting on an unexpected prompt
     if "stdout" not in kwargs and "stderr" not in kwargs:
         kwargs["capture_output"] = True  # but not when a caller redirects a stream itself
     return subprocess.run(argv, check=check, text=True, timeout=60, **kwargs)
@@ -120,19 +122,28 @@ def mal_tmp_exec_clean(ctx):
     Path("/dev/shm/lg-scenario.sh").unlink(missing_ok=True)
 
 
+def _fake_ed25519():
+    # A syntactically valid authorized_keys line with a random key; no private counterpart
+    # exists, so it grants no access. Built in-process to avoid shelling out to ssh-keygen.
+    import os
+    blob = b"\x00\x00\x00\x0bssh-ed25519\x00\x00\x00\x20" + os.urandom(32)
+    return "ssh-ed25519 " + base64.b64encode(blob).decode() + " lg-scenario-throwaway"
+
+
 def mal_authkeys(ctx):  # R09
-    keyfile = ctx.work / "throwaway"
-    sh("ssh-keygen", "-q", "-t", "ed25519", "-N", "", "-C", "lg-scenario-throwaway", "-f", str(keyfile))
-    pub = (keyfile.with_suffix(".pub")).read_text().strip()
     target = Path("/home/bonzo/.ssh/authorized_keys")
     ctx._authkeys_existed = target.exists()
     ctx._authkeys_backup = _restore_guard(target, ctx) if target.exists() else None
+    ctx._authkeys_modified = False  # cleanup must never touch the file unless we wrote to it
     with target.open("a", encoding="utf-8") as stream:
-        stream.write(pub + " lg-scenario\n")
+        stream.write(_fake_ed25519() + "\n")
+    ctx._authkeys_modified = True
 
 def mal_authkeys_clean(ctx):
+    if not getattr(ctx, "_authkeys_modified", False):
+        return  # scenario failed before modifying the file: leave it exactly as it was
     target = Path("/home/bonzo/.ssh/authorized_keys")
-    if getattr(ctx, "_authkeys_existed", False):
+    if ctx._authkeys_existed:
         shutil.copy2(ctx._authkeys_backup, target)   # exact byte restore
     else:
         target.unlink(missing_ok=True)
@@ -201,12 +212,16 @@ def ben_known_hosts(ctx):  # .ssh write that is not authorized_keys — near-mis
     target = Path("/home/bonzo/.ssh/known_hosts")
     ctx._kh_existed = target.exists()
     ctx._kh_backup = _restore_guard(target, ctx) if target.exists() else None
+    ctx._kh_modified = False
     with target.open("a", encoding="utf-8") as stream:
         stream.write("# lg-scenario benign marker\n")
+    ctx._kh_modified = True
 
 def ben_known_hosts_clean(ctx):
+    if not getattr(ctx, "_kh_modified", False):
+        return  # leave the file untouched if the scenario did not modify it
     target = Path("/home/bonzo/.ssh/known_hosts")
-    if getattr(ctx, "_kh_existed", False):
+    if ctx._kh_existed:
         shutil.copy2(ctx._kh_backup, target)
     else:
         target.unlink(missing_ok=True)
@@ -286,7 +301,7 @@ def _preflight():
     fields = dict(line.split(None, 1) for line in status.splitlines() if " " in line)
     if fields.get("enabled", "").strip() != "1" or fields.get("lost", "").strip() != "0":
         raise SystemExit(f"audit status not healthy (need enabled 1, lost 0):\n{status}")
-    for tool in ("setpriv", "nc", "ssh-keygen", "find", "chmod"):
+    for tool in ("setpriv", "nc", "find", "chmod"):
         if shutil.which(tool) is None:
             raise SystemExit(f"required tool missing: {tool}")
     return status

@@ -71,3 +71,15 @@ def test_sh_helper_allows_a_redirected_stdout(tmp_path):
         runner.sh("printf", "hello", stdout=sink)
     assert out.read_text() == "hello"
     assert runner.sh("printf", "hi").stdout == "hi"  # capture still works when not redirected
+
+
+def test_cleanup_never_deletes_a_file_the_scenario_did_not_modify(monkeypatch):
+    # Regression: a scenario that failed before writing must not unlink the real file
+    # (an earlier bug deleted /home/bonzo/.ssh/authorized_keys on an abort).
+    from pathlib import Path
+    deleted = []
+    monkeypatch.setattr(Path, "unlink", lambda self, *a, **k: deleted.append(str(self)))
+    ctx = runner.Ctx(work=Path("/tmp"), run_id="x")  # no _authkeys_modified / _kh_modified set
+    runner.mal_authkeys_clean(ctx)
+    runner.ben_known_hosts_clean(ctx)
+    assert deleted == []
