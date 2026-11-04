@@ -53,8 +53,12 @@ def train(store: EvidenceStore, *, window_seconds, n_estimators, random_state,
             "threshold": threshold, "n_windows": len(rows), "provisional": provisional}
 
 
+def save(bundle, path):
+    joblib.dump(bundle, path)
 
 
+def load(path) -> dict:
+    return joblib.load(path)
 
 
 
