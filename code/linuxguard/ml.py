@@ -61,6 +61,11 @@ def load(path) -> dict:
     return joblib.load(path)
 
 
+def _reason(user, row, scaled):
+    top = sorted(zip(FEATURE_NAMES, scaled, (row["features"][n] for n in FEATURE_NAMES)),
+                 key=lambda item: abs(item[1]), reverse=True)[:3]
+    drivers = ", ".join(f"{name}={value:g}" for name, _z, value in top)
+    return f"unusual activity for {user}: {drivers} (window {row['window_start']}..{row['window_end']})"
 
 
 
