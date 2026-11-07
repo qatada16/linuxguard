@@ -68,5 +68,34 @@ def _reason(user, row, scaled):
     return f"unusual activity for {user}: {drivers} (window {row['window_start']}..{row['window_end']})"
 
 
+def window_scores(events, bundle):
+    """Return (rows, scaled_vectors, scores) for every window; shared by score() and the sweep."""
+    rows = extract_windows(events, window_seconds=bundle["window_seconds"],
+                           baseline_exes=set(bundle["baseline_exes"]))
+    if not rows:
+        return [], [], []
+    scaled = bundle["scaler"].transform(_matrix(rows))
+    return rows, scaled, list(bundle["model"].decision_function(scaled))
 
 
+def score(store: EvidenceStore, bundle, *, settle_seconds=10, settled=False) -> MlResult:
+    """Score settled windows and insert source='ml' alerts for those below the threshold."""
+    events = store.events()
+    rows, scaled, scores = window_scores(events, bundle)
+    deferred = 0
+    if not settled and events:
+        newest = datetime.fromisoformat(events[-1]["ts"].replace("Z", "+00:00"))
+        horizon = utc_timestamp((newest - timedelta(seconds=settle_seconds)).isoformat())
+        keep = [i for i, row in enumerate(rows) if row["window_end"] <= horizon]
+        deferred = len(rows) - len(keep)
+        rows, scaled, scores = ([seq[i] for i in keep] for seq in (rows, scaled, scores))
+    before = store.connection.execute("SELECT count(*) FROM alerts").fetchone()[0]
+    for row, vector, value in zip(rows, scaled, scores):
+        if value < bundle["threshold"] and row["event_ids"]:
+            alert = {"ts": row["window_end"], "source": "ml", "rule_id": None,
+                     "severity": "medium", "title": f"Unusual activity for {row['user']}",
+                     "reason": _reason(row["user"], row, vector), "anomaly_score": float(value),
+                     "window_start": row["window_start"], "window_end": row["window_end"]}
+            store.insert_alert(alert, row["event_ids"])
+    after = store.connection.execute("SELECT count(*) FROM alerts").fetchone()[0]
+    return MlResult(len(rows), deferred, after, after - before)
