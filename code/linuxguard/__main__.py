@@ -8,6 +8,8 @@ from linuxguard.config import load_config
 from linuxguard.collector import collect, CollectionError
 from linuxguard.parser import parse_file
 from linuxguard.pipeline import run_pipeline
+from linuxguard.storage import EvidenceStore
+from linuxguard import ml as ml_module
 
 
 def main() -> None:
@@ -33,9 +35,15 @@ def main() -> None:
     pipeline.add_argument("--database", type=Path, help="SQLite file; defaults to the configured database")
     pipeline.add_argument("--host", help="Source host; defaults to SSH reader hostname, or unknown for local replay")
     pipeline.add_argument("--passwd-file", type=Path, help="Captured target passwd file for UID names")
+    pipeline.add_argument("--model", type=Path, help="Isolation Forest model; also score windows for ML alerts")
     pipeline.add_argument("--detect", action="store_true", help="Run configured rules after ingestion")
     pipeline.add_argument("--settled", action="store_true",
-                          help="Treat the capture as complete (requires --file --detect); skips the settle horizon")
+                          help="Treat the capture as complete (requires --file; needs --detect or --model); skips the settle horizon")
+    trainer = commands.add_parser("train", help="Train an Isolation Forest on a normal-only baseline database")
+    trainer.add_argument("--config", type=Path, default=Path("config/linuxguard.yaml"))
+    trainer.add_argument("--database", type=Path, required=True, help="Baseline SQLite database of normal-only events")
+    trainer.add_argument("--model", type=Path, help="Output model path; defaults to the configured model")
+    trainer.add_argument("--provisional", action="store_true", help="Mark the model as provisional/demo-only")
     args = parser.parse_args()
     try:
         if args.command == "parse":
@@ -45,15 +53,27 @@ def main() -> None:
             print("Batch view only: recollect and reparse to complete the last live event.")
             return
         config = load_config(args.config)
+        if args.command == "train":
+            with EvidenceStore(args.database) as store:
+                bundle = ml_module.train(
+                    store, window_seconds=config["detection"]["window_seconds"],
+                    n_estimators=config["ml"]["n_estimators"], random_state=config["ml"]["random_state"],
+                    threshold_percentile=config["ml"]["threshold_percentile"], provisional=args.provisional)
+            model_path = args.model or config["ml"]["model_path"]
+            ml_module.save(bundle, model_path)
+            print(f"Trained on {bundle['n_windows']} baseline windows; threshold {bundle['threshold']:.4f}")
+            print(f"Model: {Path(model_path).resolve()}" + (" (PROVISIONAL)" if bundle["provisional"] else ""))
+            return
         if args.command == "pipeline":
-            if args.settled and not (args.file and args.detect):
-                parser.error("--settled requires --file and --detect; live captures are never settled")
+            if args.settled and not (args.file and (args.detect or args.model)):
+                parser.error("--settled requires --file and --detect or --model; live captures are never settled")
+            model = ml_module.load(args.model) if args.model else None
             result = run_pipeline(output=args.output, state=args.state or config["collector"]["state_path"],
                                   database=args.database or config["storage"]["database"], file=args.file,
                                   ssh_host=None if args.file else config["collector"]["ssh_host"],
                                   log_path=config["collector"]["log_path"], host=args.host,
                                   passwd_file=args.passwd_file,
-                                  rules=config["detection"]["rules"] if args.detect else None,
+                                  rules=config["detection"]["rules"] if args.detect else None, model=model,
                                   settle_seconds=config["detection"]["settle_seconds"], settled=args.settled)
             print(f"Collected {result.collection.bytes_written} new bytes; parsed {len(result.parsed.events)} events")
             print(f"Database: {result.stored.inserted} inserted, {result.stored.updated} updated, "
@@ -64,6 +84,10 @@ def main() -> None:
                 d = result.detection
                 print(f"Detection: {d.new_alerts} new alert(s), {d.alerts} total; "
                       f"evaluated {d.evaluated} events, deferred {d.deferred} unsettled.")
+            if result.ml is not None:
+                m = result.ml
+                print(f"ML: {m.new_alerts} new alert(s), {m.alerts} total; "
+                      f"scored {m.evaluated} windows, deferred {m.deferred} unsettled.")
             return
         if args.command == "collect":
             result = collect(output=args.output, state=args.state or config["collector"]["state_path"],
