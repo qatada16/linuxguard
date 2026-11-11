@@ -1,9 +1,9 @@
 # LinuxGuard development
 
 The project foundation, incremental collector, batch audit parser, SQLite
-ingestion pipeline, configurable rule engine, and a labelled scenario runner are
-ready. ML, dashboard, evaluation, and reports are still pending; their modules
-remain placeholders.
+ingestion pipeline, configurable rule engine, a labelled scenario runner, and an
+Isolation Forest anomaly detector with an A/B evaluation are ready. Dashboard,
+reports and optional AI explanations are still pending; those modules are placeholders.
 
 ## Setup and checks
 
@@ -16,7 +16,7 @@ uv run --locked --inexact python -m linuxguard check-config
 uv run --locked --inexact pytest
 ```
 
-Last verified 2026-11-28: **115 tests pass**.
+Last verified 2026-11-28: **125 tests pass**.
 
 `uv.lock` pins direct and transitive dependencies. `--inexact` keeps any unrelated
 packages already installed in the existing virtual environment. A fresh checkout
@@ -229,6 +229,51 @@ Repeated-failed-authentication scenarios (R04/R05) are deferred because this VM 
 no user-creation tool; those rules are covered by synthetic unit tests and by the
 real mistyped logins already in the setup capture. Hold the 10× evaluation runs
 until the rules are frozen and Phase 7 exists, so test data never tunes the rules.
+
+## Machine learning (Phase 7)
+
+An optional Isolation Forest flags windows of unusual activity, to be compared against
+the rules. It is deliberately kept distinct: ML alerts have `source='ml'`, say "unusual
+activity" (never "intrusion"), and carry an anomaly score and the top contributing
+features. `linuxguard/features.py` buckets events into fixed per-user windows
+(`detection.window_seconds`, default 60) and computes counts and ratios (events, execs,
+failed/ok auth, sudo, sensitive writes, distinct exes/dirs/IPs, never-before-seen exes,
+command-line lengths, temp-dir execs). `linuxguard/ml.py` scales those, fits
+`IsolationForest` with the `ml` config settings, and sets the alert threshold at the
+`ml.threshold_percentile` of the baseline scores.
+
+Train on a **normal-only baseline database** (events only, no attacks), then score a
+capture during the pipeline:
+
+```bash
+# 1. ingest a normal-only baseline capture (no --detect), then train:
+uv run --locked --inexact python -m linuxguard pipeline --file data/experiments/baseline.audit --output data/experiments/baseline.cap --state data/experiments/baseline.state --database data/experiments/baseline.db --host linuxguard-target
+uv run --locked --inexact python -m linuxguard train --database data/experiments/baseline.db --model data/model.joblib
+# 2. run rules AND ML on a capture:
+uv run --locked --inexact python -m linuxguard pipeline --file CAPTURE --output OUT --state STATE --database test.db --host linuxguard-target --detect --model data/model.joblib --settled
+```
+
+`train` refuses a baseline with fewer than ~20 windows. **Model quality depends entirely
+on a rich, representative baseline**: on a thin or uniform baseline the detector may flag
+ordinary small windows and miss real anomalies. The scripted `benign-workload.py` is a
+convenient but limited baseline (file/text/python only); treat any model trained on it as
+provisional. The proposal commits only to *evaluating* ML, not to it winning — report A vs
+B honestly.
+
+## Evaluation (Phase 10)
+
+`eval/evaluate.py` compares **A (rules only)** against **B (rules + ML)** on one labelled
+scenario capture, matching alerts to the nearest scenario start (audit timestamps land a
+few ms before the runner's recorded `start_ts`) and reporting precision, recall,
+false-positive rate and detection latency, plus a per-scenario table:
+
+```bash
+python3 eval/evaluate.py --test-db test.db --labels data/scenarios/<run_id>/labels.csv
+```
+
+A is the `source='rule'` alerts; B adds `source='ml'`, so both are measured on the same
+recorded log. Full Phase 10 (resource-use sampling, charts, the written results chapter)
+and an ML threshold sweep are future work.
 
 ## SSH access to the VM
 

@@ -297,9 +297,9 @@ label it as a clean training baseline. Detection, ML, reports, dashboard and
 evaluation modules remain placeholders. Historical key verification covers the
 listed probes, not every watched path or possible action.
 
-There are 83 passing local tests: 21 configuration/CLI, five audit-script, 17
-collector, 13 parser, nine storage, ten pipeline, three workload and five interval
-extraction tests. They cover rotations, copy-truncate, missing archives,
+There are 125 passing local tests: the earlier 83, 27 rule-engine, six scenario-runner,
+and nine Phase 7 feature/ML/evaluation tests. The rule tests use synthetic, clearly labelled audit
+fixtures; the scenario tests invoke no privileged action. They cover rotations, copy-truncate, missing archives,
 partial lines, cursor/capture corruption, SSH failures, safe remote argument passing,
 enriched records, fragmented arguments, identities, paths, malformed input, replay,
 late-group updates, transactional evidence links, timestamp bounds, conflicting
@@ -384,9 +384,9 @@ not newly generated credentials or reinstallation of an already configured VM.
    check: `enabled 1`, `lost 0`, `backlog 0` (section 8). Do not request this same
    completed check again. Representativeness for a broader ML baseline remains
    pending; no validated ML baseline is claimed.
-3. Phase 5 implementation and real replay verification are complete. Continue with
-   Phase 6 configurable detection rules and firing/near-miss tests. Do not feed
-   partially observed live groups into a detector without a completion policy.
+3. Phases 5 and 6 and their real replay verification are complete (section 9).
+   Detection has a settle horizon; do not feed partially observed live groups into it
+   without `--settled`, which is only for finished offline captures.
 4. Continue with ML, dashboard/reports, independently
    labelled scenarios, and the rules-only versus rules-plus-ML evaluation. The
    proposal's main contribution is the measured comparison; AI is optional.
@@ -466,3 +466,117 @@ ML baseline and assessment of representativeness remain pending in Phase 7.
 
 Keep [the roadmap](../timeline/LinuxGuard_Roadmap.md), this handoff, and
 [the setup guide](../code/README.md) consistent as work proceeds.
+
+## 9. Phase 6 detection and Phase 9 scenarios — 2026-11-28
+
+Phase 6 is implemented: `linuxguard/rules.py` (validated YAML format, single-event
+`match` and sliding-window `threshold` detection, evidence-linked alerts), ten shipped
+rules in `config/rules.yaml` (R01–R10), and `pipeline --detect [--settled]`.
+`check-config` reports the rule count. Predicates read normalized fields and PATH
+evidence; read/write intent comes from PATH nametypes and decoded open flags, and a
+SUID bit from the chmod-family mode argument — never from an audit key or file mode
+alone. File rules require `event_type: SYSCALL` and `success: true`.
+
+Real replay used separate experiment databases and fresh capture/cursor pairs under
+`code/data/experiments/phase6-rules-20261128/` (Git-ignored). The originals were
+byte-identical before and after (sha256 of `sample.audit`, `setup-and-probes.audit`
+and `data/linuxguard.db` unchanged):
+
+- Scripted benign sample (508 events): **0 alerts**. Second replay collected 0 bytes,
+  inserted/updated 0 rows, and raised 0 new alerts.
+- Mixed `setup-and-probes` capture (1,151 events): exactly **2 alerts** — R03 and R08
+  on the authorized trigger-verification probe files created in `/etc/sudoers.d` and
+  `/etc/cron.d` (audit ids `1794741739.956:691` and `:695`). These are real creation
+  events, true positives for "config file created", not false positives. The `.ssh`
+  probe correctly did not match R09 (it is not an `authorized_keys` file). Integrity
+  and foreign-key checks passed on both experiment databases.
+
+Narrowed rules, by design: R06's "shell from /tmp" is covered by R07 (no parent-process
+correlation); R10 fires on any successful SUID set because "on a new file" cannot be
+established from one event. Known gaps: `sh /tmp/x.sh` (the script path is not an
+execve PATH entry), openat paths relative to a dirfd, b32 syscall numbers decoded only
+by the enriched `SYSCALL=` name or the small b64 number table, and
+`/etc/ssh/sshd_config.d` (not watched).
+
+Phase 9: `scenarios/run.py` generates labelled benign and malicious telemetry; it runs
+only as root on the VM, every action is inert, reversible and loopback-only, and labels
+come from the catalogue, not a detector. Host-side tests cover the catalogue and
+`--list` without any privileged action. Repeated-failed-authentication scenarios
+(R04/R05) are deferred because the VM has no user-creation tool and no `sshpass`; those
+rules are covered by synthetic tests and the real mistyped logins in the setup capture.
+
+**Development run — 2026-11-28 (run_id `20261127T220019-336bab`).** The user ran the
+runner once on the VM with their sudo password (`--repeats 1 --gap 3`); 21 scenarios,
+clean teardown, `auditctl -s` reported `enabled 1` / `lost 0` before and after. Two
+collector bugs were fixed first: `sh()` forced `capture_output` (broke the two
+read-to-/dev/null scenarios; a regression test was added) and `mal_tmp_exec` ran the
+script via `/bin/sh script` instead of executing it directly.
+
+The interval was collected over the unprivileged agent into a Git-ignored experiment
+database (`code/data/experiments/scenario-dev-<run_id>/`) and detected with
+`pipeline --detect --settled`. Alerts were attributed to the nearest scenario start
+(audit timestamps land a few ms before the Python-recorded `start_ts`, so boundary
+matching at a 3 s gap mis-assigns; scenarios are 3 s apart and finish in <1 s, so
+nearest-start is unambiguous). Result after the fixes below: **9 of 9 rule-targeted
+malicious scenarios fired their rule (R01, R02, R03, R06×2, R07, R08, R09, R10), zero
+benign false positives across the ten benign scenarios, and both ML-only scenarios were
+correctly silent.** Integrity and foreign-key checks passed.
+
+The initial run's one miss was MAL-TMPEXEC (R07): the scenario ran `/bin/sh /dev/shm/script`, so the
+execve recorded the interpreter `/usr/bin/dash` with argv path `/bin/sh`, never the
+script path — exactly the documented R07 gap (an interpreted script is not an execve
+target). The scenario was corrected to execute the script directly (so `/dev/shm/...` is the
+execve target); a confirmation run (`--only MAL-TMPEXEC`, run_id
+`20261127T220711-952c87`) then fired R07 on `/dev/shm/lg-scenario.sh`, giving the 9/9
+above. R07's unit test already covers a `/dev/shm` path as evidence.
+
+The 10× evaluation runs remain for later, after the rules are frozen and Phase 7 exists,
+so test data never tunes the rules. Experiment databases and collected captures stay
+Git-ignored; the catalogue, runner and labels format are the tracked artifacts.
+
+## 10. Phase 7 ML + evaluation code — 2026-11-28
+
+Phase 7 code is implemented and unit-tested (no VM needed): `linuxguard/features.py`
+(fixed per-user windows aligned to epoch boundaries; counts/ratios incl. never-seen exes
+and temp-dir execs), `linuxguard/ml.py` (`train` → scaler + IsolationForest with the `ml`
+config, threshold at `threshold_percentile` of baseline scores; `score` inserts
+`source='ml'` alerts — "unusual activity", anomaly score, top features, evidence links;
+same settle horizon and replay-idempotence as rules; refuses <20 baseline windows), the
+`train` CLI command, `pipeline --model`, and `eval/evaluate.py` (A=rules vs B=rules+ML,
+nearest-start matching, precision/recall/FPR/latency + per-scenario table). 125 tests pass.
+
+**Honest limitation:** model quality depends entirely on a rich, representative baseline.
+On a thin/uniform baseline the detector flags ordinary small windows and misses real
+anomalies (observed in a CLI smoke run). The unit test uses a varied 60-window baseline
+where a concentrated attack burst scores lowest; that is the behaviour to expect only with
+a good baseline.
+
+**Baseline collected and model trained — 2026-11-28.** The scripted workload
+(`benign-workload.py --duration 3600`) ran its full 3600 s of active time but spanned
+22:27:28Z→06:11:02Z wall-clock because the host was **suspended** partway through
+(`time.monotonic()` does not advance during suspend); status `completed`, 301 steps. The
+workload interval was extracted (whole groups) with `extract-benign-sample.py` — **786
+events / 4372 records**, sha256 `5ae397b8eaff0a8fa9eb60f53eb64e9f77902179ad49b9c0978f26f9a10c2602` — which excludes the earlier malicious scenario runs
+(22:00-22:07Z). Ingested into `data/experiments/baseline-20261128/baseline.db` and trained:
+**59 windows** (54 bonzo, 4 root, 1 unknown), threshold **-0.2718**, saved to
+`data/model.joblib` (PROVISIONAL: scripted file/text/python activity only, 59 windows — a
+modest first baseline). Still owed: a user `sudo auditctl -s` to confirm `lost 0` across the
+suspend; collect more varied/longer normal activity before any final model.
+
+**Remaining data steps (staged; user runs the VM parts, agent collects over the socket):**
+
+1. ~~Normal-only baseline~~ **done (above).** To improve it later, run the scripted workload again on the VM:
+   `ssh lg 'nohup python3 /home/bonzo/linuxguard-setup/benign-workload.py --duration 7200 >/tmp/lg-baseline.out 2>&1 &'`
+   (upload `scripts/benign-workload.py` first if not staged). When done, collect over the
+   agent into `data/experiments/baseline-<date>/baseline.db` (pipeline, no `--detect`) and
+   `train --database … --model data/model.joblib`. The scripted workload is limited variety;
+   note it. A user-supplied `auditctl -s` (`lost 0`) confirms no drops.
+2. **10× scenario test capture (one sudo run).**
+   `ssh -t lg 'sudo python3 /home/bonzo/linuxguard-setup/scenario-run.py --repeats 10 --gap 10'`
+   (~45-70 min). Copy `labels.csv`, collect the interval into `test.db`, run
+   `pipeline --file … --detect --settled --model data/model.joblib`.
+3. **Evaluate A vs B:** `python3 eval/evaluate.py --test-db test.db --labels …/labels.csv`;
+   record precision/recall/FPR/latency and the per-scenario table honestly.
+
+The model (`data/model.joblib`) and all captures stay Git-ignored; record provenance
+(hashes, window counts, UTC interval, threshold) here when the runs land.
