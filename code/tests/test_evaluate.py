@@ -38,5 +38,28 @@ def test_metrics_true_and_false_positives():
     assert m["latency_median"] is not None and m["latency_median"] >= 0
 
 
+def test_compare_shows_ml_improving_recall():
+    alerts = [alert("rule", "2026-11-27T22:00:10.050000Z", "R03"),      # both A and B
+              alert("ml", "2026-11-27T22:00:30.100000Z")]               # only B (MAL-C)
+    a, b, per = ev.compare(LABELS, alerts)
+    assert a["recall"] == 0.5 and b["recall"] == 1.0
+    mal_c = next(r for r in per if r["scenario_id"] == "MAL-C")
+    assert mal_c["A"] == [] and mal_c["B"] == ["ml"]
 
 
+def test_repetitions_are_scored_per_run():
+    # Repeated runs of the same scenario_id must be counted independently, not collapsed.
+    labels = [
+        label("M1", "malicious", "2026-11-27T22:00:10.000000Z", "2026-11-27T22:00:10.200000Z"),
+        label("M1", "malicious", "2026-11-27T22:00:20.000000Z", "2026-11-27T22:00:20.200000Z"),
+        label("B1", "benign",    "2026-11-27T22:00:30.000000Z", "2026-11-27T22:00:30.200000Z"),
+        label("B1", "benign",    "2026-11-27T22:00:40.000000Z", "2026-11-27T22:00:40.200000Z"),
+    ]
+    for i, row in enumerate(labels):  # give each row a repetition so run keys are unique
+        row["repetition"] = str(i % 2 + 1)
+    alerts = [alert("rule", "2026-11-27T22:00:10.050000Z", "R03")]  # only M1 rep 1 caught
+    m = ev.metrics(labels, alerts)
+    assert m["tp"] == 1 and m["fn"] == 1 and m["fp"] == 0 and m["n_malicious"] == 2 and m["n_benign"] == 2
+    a, b, per = ev.compare(labels, alerts)
+    m1 = next(r for r in per if r["scenario_id"] == "M1")
+    assert m1["runs"] == 2 and m1["A_caught"] == 1
