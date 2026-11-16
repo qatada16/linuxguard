@@ -124,3 +124,52 @@ def test_unrelated_or_future_database_is_rejected(tmp_path):
         connection.execute("PRAGMA user_version=99")
     with pytest.raises(ValueError, match="unsupported"):
         EvidenceStore(path)
+
+
+def _ev(serial, epoch, *, exe="/usr/bin/echo", uid=1000, pid=12, addr=None, host="target"):
+    addr_field = f" addr={addr}" if addr else ""
+    return parse_lines(io.StringIO(
+        f'type=SYSCALL msg=audit({epoch}:{serial}): uid={uid} auid={uid} pid={pid} '
+        f'success=yes exe="{exe}"{addr_field} key="lg_exec"\n'), host=host).events[0]
+
+
+def test_list_alerts_filters_and_evidence_count(tmp_path):
+    with EvidenceStore(tmp_path / "e.db") as store:
+        store.insert_events([event(serial="1"), event(serial="2")])
+        store.insert_alert(alert(), [1])
+        store.insert_alert({"ts": "2023-11-14T22:13:25Z", "source": "ml", "rule_id": None,
+                            "severity": "medium", "title": "ML", "reason": "unusual",
+                            "anomaly_score": -0.3}, [1, 2])
+        rows = store.list_alerts()
+        assert [r["source"] for r in rows] == ["ml", "rule"]  # newest first
+        assert store.list_alerts(source="rule")[0]["evidence_count"] == 1
+        assert store.list_alerts(source="ml")[0]["evidence_count"] == 2
+        assert store.list_alerts(severity="high") and not store.list_alerts(status="closed")
+
+
+def test_set_alert_status_valid_and_rejected(tmp_path):
+    with EvidenceStore(tmp_path / "e.db") as store:
+        store.insert_events([event()])
+        aid = store.insert_alert(alert(), [1])
+        store.set_alert_status(aid, "closed")
+        assert store.get_alert(aid)["status"] == "closed"
+        with pytest.raises(ValueError, match="invalid status"):
+            store.set_alert_status(aid, "bogus")
+        with pytest.raises(ValueError, match="no alert"):
+            store.set_alert_status(999, "new")
+
+
+def test_related_events_correlates_window_and_excludes_unrelated(tmp_path):
+    base = 1700000000
+    with EvidenceStore(tmp_path / "e.db") as store:
+        trigger = _ev("1", f"{base}.0", pid=100, addr="203.0.113.5")          # the evidence
+        same_pid = _ev("2", f"{base + 30}.0", pid=100, exe="/usr/bin/cat")    # shares pid, in window
+        same_ip = _ev("3", f"{base + 60}.0", pid=777, addr="203.0.113.5")     # shares src_ip, in window
+        unrelated = _ev("4", f"{base + 61}.0", pid=888, uid=0, exe="/usr/bin/ls")  # nothing shared
+        far = _ev("5", f"{base + 6000}.0", pid=100)                            # shares pid but far outside window
+        store.insert_events([trigger, same_pid, same_ip, unrelated, far])
+        aid = store.insert_alert(dict(alert(), ts=f"2023-11-14T22:13:20Z"), [1])
+        got = {e["id"] for e in store.related_events(aid, minutes=5)}
+        assert got == {1, 2, 3}  # evidence + pid match + ip match; not the unrelated or far events
+        flags = {e["id"]: e["is_evidence"] for e in store.related_events(aid, minutes=5)}
+        assert flags[1] is True and flags[2] is False

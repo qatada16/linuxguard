@@ -1,7 +1,7 @@
 """Local SQLite evidence with stable event IDs and replay-safe batch updates."""
 
 from dataclasses import dataclass
-from datetime import datetime, timezone
+from datetime import datetime, timedelta, timezone
 import hashlib
 import json
 import os
@@ -176,9 +176,69 @@ class EvidenceStore:
         return [dict(json.loads(row["event_json"]), id=row["id"]) for row in rows]
 
     def timeline(self, alert_id) -> list[dict]:
-        """Return the alert's direct evidence; wider correlation belongs to Phase 8."""
+        """Return the alert's direct evidence; wider correlation is `related_events`."""
         rows = self.connection.execute(
             "SELECT e.id, e.event_json FROM events e JOIN alert_evidence a ON a.event_id=e.id "
             "WHERE a.alert_id=? ORDER BY e.ts, CAST(e.serial AS INTEGER), e.host", (alert_id,),
         )
         return [dict(json.loads(row["event_json"]), id=row["id"]) for row in rows]
+
+    def get_alert(self, alert_id) -> dict | None:
+        """Return one alert row as a plain dict, or None."""
+        row = self.connection.execute("SELECT * FROM alerts WHERE id=?", (alert_id,)).fetchone()
+        return dict(row) if row else None
+
+    def list_alerts(self, *, source=None, severity=None, status=None, start=None, end=None) -> list[dict]:
+        """Return alert rows (newest first) with an evidence_count, filtered by any given field."""
+        query = ("SELECT a.*, (SELECT count(*) FROM alert_evidence e WHERE e.alert_id=a.id) "
+                 "AS evidence_count FROM alerts a WHERE 1=1")
+        args = []
+        for column, value in (("source", source), ("severity", severity), ("status", status)):
+            if value is not None:
+                query += f" AND a.{column}=?"
+                args.append(value)
+        if start is not None:
+            query += " AND a.ts>=?"
+            args.append(utc_timestamp(start))
+        if end is not None:
+            query += " AND a.ts<?"
+            args.append(utc_timestamp(end))
+        rows = self.connection.execute(query + " ORDER BY a.ts DESC, a.id DESC", args)
+        return [dict(row) for row in rows]
+
+    def set_alert_status(self, alert_id, status) -> None:
+        """Set an alert's investigation status; reject anything outside the schema's set."""
+        if status not in ("new", "investigating", "closed"):
+            raise ValueError(f"invalid status: {status}")
+        with self.connection:
+            cursor = self.connection.execute("UPDATE alerts SET status=? WHERE id=?", (status, alert_id))
+        if cursor.rowcount == 0:
+            raise ValueError(f"no alert with id {alert_id}")
+
+    def related_events(self, alert_id, *, minutes=5) -> list[dict]:
+        """Basic correlation: the alert's evidence plus nearby events sharing pid/ppid/user/src_ip.
+
+        "Nearby" is within +/- `minutes` of the alert's own evidence window. Each returned
+        event carries an `is_evidence` flag so the dashboard can highlight the triggers.
+        """
+        evidence = self.timeline(alert_id)
+        if not evidence:
+            return []
+        evidence_ids = {event["id"] for event in evidence}
+        times = [datetime.fromisoformat(event["ts"].replace("Z", "+00:00")) for event in evidence]
+        window = timedelta(minutes=minutes)
+        low = (min(times) - window).isoformat().replace("+00:00", "Z")
+        high = (max(times) + window).isoformat().replace("+00:00", "Z")
+        keys = {"pid": set(), "ppid": set(), "user": set(), "src_ip": set()}
+        for event in evidence:
+            for field, seen in keys.items():
+                if event.get(field) is not None:
+                    seen.add(event[field])
+        related = {}
+        for event in self.events_between(low, high):
+            match = event["id"] in evidence_ids or any(
+                event.get(field) is not None and event.get(field) in seen for field, seen in keys.items())
+            if match:
+                event["is_evidence"] = event["id"] in evidence_ids
+                related[event["id"]] = event
+        return sorted(related.values(), key=lambda e: (e["ts"], e["id"]))
