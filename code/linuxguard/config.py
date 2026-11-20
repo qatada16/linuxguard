@@ -22,7 +22,7 @@ def load_config(path: str | Path) -> dict:
         "storage": ("database",),
         "detection": ("rules_path",),
         "ml": ("model_path",),
-        "ai": ("mode",),
+        "ai": ("mode", "model", "endpoint"),
     }
     for section, fields in string_fields.items():
         if not isinstance(config.get(section), dict):

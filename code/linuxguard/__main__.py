@@ -10,6 +10,7 @@ from linuxguard.parser import parse_file
 from linuxguard.pipeline import run_pipeline
 from linuxguard.storage import EvidenceStore
 from linuxguard import ml as ml_module
+from linuxguard import ai as ai_module
 
 
 def main() -> None:
@@ -44,6 +45,12 @@ def main() -> None:
     trainer.add_argument("--database", type=Path, required=True, help="Baseline SQLite database of normal-only events")
     trainer.add_argument("--model", type=Path, help="Output model path; defaults to the configured model")
     trainer.add_argument("--provisional", action="store_true", help="Mark the model as provisional/demo-only")
+    explainer = commands.add_parser("explain", help="Explain a stored alert (standard template or local model)")
+    explainer.add_argument("--config", type=Path, default=Path("config/linuxguard.yaml"))
+    explainer.add_argument("--database", type=Path, required=True, help="SQLite database containing the alert")
+    explainer.add_argument("--alert", type=int, required=True, help="Alert id to explain")
+    explainer.add_argument("--mode", choices=["standard", "local", "cloud"], help="Override the configured AI mode")
+    explainer.add_argument("--endpoint", help="Override the configured Ollama endpoint")
     args = parser.parse_args()
     try:
         if args.command == "parse":
@@ -63,6 +70,18 @@ def main() -> None:
             ml_module.save(bundle, model_path)
             print(f"Trained on {bundle['n_windows']} baseline windows; threshold {bundle['threshold']:.4f}")
             print(f"Model: {Path(model_path).resolve()}" + (" (PROVISIONAL)" if bundle["provisional"] else ""))
+            return
+        if args.command == "explain":
+            with EvidenceStore(args.database) as store:
+                alert = store.get_alert(args.alert)
+                if alert is None:
+                    parser.exit(2, f"Explain error: no alert with id {args.alert}\n")
+                text, produced_by = ai_module.explain(
+                    alert, store.timeline(args.alert), mode=args.mode or config["ai"]["mode"],
+                    model=config["ai"]["model"], endpoint=args.endpoint or config["ai"]["endpoint"],
+                    timeout=config["ai"]["timeout_seconds"])
+            print(f"Alert {args.alert}: {alert['title']} [{alert['source']}/{alert['severity']}]")
+            print(f"Explanation (produced by: {produced_by}):\n{text}")
             return
         if args.command == "pipeline":
             if args.settled and not (args.file and (args.detect or args.model)):

@@ -20,5 +20,7 @@ ml:
   threshold_percentile: 1.0
 
 ai:
-  mode: standard
-  timeout_seconds: 15
+  mode: standard                 # standard | local | cloud; local uses Ollama
+  model: igorls/gemma-4-12B-it-heretic-GGUF:Q4_K_M
+  endpoint: http://localhost:11434
+  timeout_seconds: 120            # a 12B model's first call loads weights

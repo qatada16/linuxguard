@@ -17,6 +17,7 @@ import streamlit as st
 
 from linuxguard.config import load_config
 from linuxguard.reports import incident_markdown
+from linuxguard import ai as ai_module
 from linuxguard.storage import EvidenceStore
 
 _ROOT = Path(__file__).resolve().parents[2]
@@ -99,7 +100,22 @@ def alerts_page(store):
             st.caption(f"audit {event.get('audit_id')} (event id {event['id']})")
             st.code(event["raw"].rstrip("\n"), language=None)
 
-    report = incident_markdown(store, aid, related_minutes=minutes)
+    st.subheader("AI explanation")
+    ai_cfg = load_config(_ROOT / "config" / "linuxguard.yaml")["ai"]
+    ai_mode = st.radio("Mode", ["standard", "local model"], horizontal=True, key=f"aimode{aid}")
+    if st.button("Explain this alert", key=f"aibtn{aid}"):
+        mode = "local" if ai_mode == "local model" else "standard"
+        with st.spinner("Generating explanation…"):
+            exp = ai_module.explain(store.get_alert(aid), store.timeline(aid), mode=mode,
+                                    model=ai_cfg["model"], endpoint=ai_cfg["endpoint"],
+                                    timeout=ai_cfg["timeout_seconds"])
+        st.session_state[f"aiexp{aid}"] = exp
+    explanation = st.session_state.get(f"aiexp{aid}")
+    if explanation:
+        st.caption(f"produced by: {explanation[1]}")
+        st.write(explanation[0])
+
+    report = incident_markdown(store, aid, related_minutes=minutes, explanation=explanation)
     st.download_button("Download incident report (Markdown)", report,
                        file_name=f"incident-alert-{aid}.md", mime="text/markdown")
     with st.expander("Preview report"):
