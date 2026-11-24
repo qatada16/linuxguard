@@ -35,3 +35,8 @@ jobs:
       - run: pip install -e ".[dev,dashboard]"
       - run: pytest --cov=linuxguard --cov-report=term-missing
 
+  shell:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - run: shellcheck --severity=warning deploy/install.sh lab/*.sh

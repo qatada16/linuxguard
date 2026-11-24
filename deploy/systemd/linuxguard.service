@@ -1,0 +1,29 @@
+[Unit]
+Description=LinuxGuard intrusion detection monitor
+Documentation=https://github.com/qatada16/linuxguard
+After=auditd.service rsyslog.service
+Wants=auditd.service
+
+[Service]
+Type=simple
+ExecStart=/opt/linuxguard/venv/bin/linuxguard --config /etc/linuxguard/linuxguard.yaml monitor
+Restart=on-failure
+RestartSec=5
+User=root
+CapabilityBoundingSet=CAP_DAC_READ_SEARCH CAP_SYS_PTRACE
+AmbientCapabilities=CAP_DAC_READ_SEARCH CAP_SYS_PTRACE
+NoNewPrivileges=yes
+ProtectSystem=strict
+ProtectHome=read-only
+ReadWritePaths=/var/lib/linuxguard
+PrivateTmp=yes
+PrivateDevices=yes
+ProtectKernelTunables=yes
+ProtectKernelModules=yes
+ProtectControlGroups=yes
+RestrictSUIDSGID=yes
+LockPersonality=yes
+UMask=0077
+
+[Install]
+WantedBy=multi-user.target
