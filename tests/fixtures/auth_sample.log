@@ -1,0 +1,12 @@
+2023-11-14T22:13:21.600000+00:00 lab sshd[2345]: Failed password for root from 203.0.113.7 port 50122 ssh2
+2023-11-14T22:14:00.000000+00:00 lab sshd[2346]: Failed password for invalid user oracle from 203.0.113.7 port 50130 ssh2
+2023-11-14T22:15:00.123456+00:00 lab sshd[2347]: Accepted publickey for alice from 10.0.0.11 port 50131 ssh2: ED25519 SHA256:abc
+2023-11-14T22:16:00+0000 lab sudo[2400]:     alice : TTY=pts/0 ; PWD=/home/alice ; USER=root ; COMMAND=/usr/bin/systemctl restart nginx
+2023-11-14T22:17:00+00:00 lab sudo[2401]:      bob : user NOT in sudoers ; TTY=pts/1 ; PWD=/home/bob ; USER=root ; COMMAND=/usr/bin/cat /etc/shadow
+2023-11-14T22:18:00+00:00 lab sudo[2402]: pam_unix(sudo:auth): authentication failure; logname=bob uid=1002 euid=0 tty=/dev/pts/1 ruser=bob rhost=  user=bob
+2023-11-14T22:19:00+00:00 lab useradd[2403]: new user: name=eve, UID=1005, GID=1005, home=/home/eve, shell=/bin/bash, from=/dev/pts/0
+2023-11-14T22:20:00+00:00 lab usermod[2404]: add 'eve' to group 'sudo'
+2023-11-14T22:21:00+00:00 lab su[2405]: (to root) alice on pts/0
+2023-11-14T22:22:00+00:00 lab cron[2406]: pam_unix(cron:session): session opened for user root(uid=0) by root(uid=0)
+2023-11-14T22:23:00+00:00 lab sshd[2407]: Connection closed by authenticating user root 203.0.113.7 port 50150 [preauth]
+Nov 14 22:24:00 lab sshd[2408]: Failed password for admin from 198.51.100.9 port 40000 ssh2
