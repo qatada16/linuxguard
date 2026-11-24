@@ -1,0 +1,48 @@
+storage:
+  database_path: /var/lib/linuxguard/linuxguard.db
+  store_all_events: true
+
+collection:
+  audit_log_path: /var/log/audit/audit.log
+  auth_log_paths:
+    - /var/log/auth.log
+  passwd_path: /etc/passwd
+  poll_interval_seconds: 1.0
+  deduplication_window_seconds: 2.0
+  syslog_timezone: local
+
+detection:
+  mode: hybrid
+  rules_path: null
+  model_path: /var/lib/linuxguard/models/isolation_forest.joblib
+  evidence_limit: 50
+  anomaly:
+    window_seconds: 60
+    n_estimators: 100
+    max_samples: 256
+    threshold_quantile: 0.995
+    random_state: 42
+    lateness_seconds: 5.0
+    range_guard: true
+    guard_factor: 2.0
+    guard_margin: 5.0
+
+explanation:
+  mode: template
+  max_evidence_events: 20
+  ollama:
+    base_url: http://127.0.0.1:11434
+    model: llama3.2
+    timeout_seconds: 60
+    redact: false
+  cloud:
+    endpoint: https://api.openai.com/v1/chat/completions
+    model: gpt-4o-mini
+    api_key_env: LINUXGUARD_CLOUD_API_KEY
+    consent_granted: false
+    timeout_seconds: 60
+
+api:
+  host: 127.0.0.1
+  port: 8000
+  api_key_env: LINUXGUARD_API_KEY
