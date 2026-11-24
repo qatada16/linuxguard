@@ -1,0 +1,449 @@
+rules:
+  - id: LG-AUTH-001
+    name: Remote authentication brute force
+    description: Repeated failed authentication attempts from a single remote address.
+    severity: high
+    tactic: Credential Access
+    technique: T1110.001
+    match:
+      category: authentication
+      outcome: failure
+      src_ip: {exists: true}
+    threshold:
+      count: 5
+      window_seconds: 60
+      group_by: [src_ip]
+    explanation: >-
+      The remote address {src_ip} failed to authenticate {count} times within a short
+      window, which is consistent with password guessing against {host}.
+    response:
+      - Block or rate-limit the source address at the firewall.
+      - Confirm that no subsequent successful login came from the same address.
+      - Enforce key-based SSH authentication and disable password logins where possible.
+
+  - id: LG-AUTH-002
+    name: Password spraying across accounts
+    description: Failed authentication attempts against many different accounts from one address.
+    severity: high
+    tactic: Credential Access
+    technique: T1110.003
+    match:
+      category: authentication
+      outcome: failure
+      src_ip: {exists: true}
+    threshold:
+      count: 4
+      distinct: user
+      window_seconds: 300
+      group_by: [src_ip]
+    explanation: >-
+      The address {src_ip} attempted to authenticate as several different accounts
+      ({distinct_values}), a pattern typical of password spraying or username enumeration.
+    response:
+      - Block the source address and review which accounts were targeted.
+      - Check whether any targeted account authenticated successfully afterwards.
+
+  - id: LG-AUTH-003
+    name: Successful login after repeated failures
+    description: A remote address succeeded in authenticating after multiple failures.
+    severity: critical
+    tactic: Initial Access
+    technique: T1078
+    sequence:
+      within_seconds: 600
+      group_by: [src_ip]
+      steps:
+        - match:
+            category: authentication
+            outcome: failure
+          min_count: 3
+        - match:
+            category: [authentication, login]
+            outcome: success
+    explanation: >-
+      After several failed attempts, {src_ip} successfully logged in as {user}. This
+      suggests that a password guessing attack may have succeeded.
+    response:
+      - Treat the account {user} as potentially compromised and reset its credentials.
+      - Review the session activity that followed the login in the timeline.
+      - Terminate active sessions from {src_ip}.
+
+  - id: LG-AUTH-004
+    name: Repeated local privilege authentication failures
+    description: Several failed sudo or su password attempts by one local user.
+    severity: medium
+    tactic: Credential Access
+    technique: T1110
+    match:
+      category: authentication
+      outcome: failure
+      src_ip: {exists: false}
+    threshold:
+      count: 3
+      window_seconds: 120
+      group_by: [user]
+    explanation: >-
+      The account {user} failed local authentication {count} times in a short period,
+      which may indicate an attempt to guess a password for privilege escalation.
+    response:
+      - Confirm with the account owner whether the failures were legitimate typing errors.
+
+  - id: LG-CRED-001
+    name: Credential store accessed by unexpected program
+    description: The shadow password database was read or modified by a non-standard program.
+    severity: high
+    tactic: Credential Access
+    technique: T1003.008
+    match:
+      category: [file_access, file_modification]
+      target_path: [/etc/shadow, /etc/gshadow, /etc/security/opasswd]
+    exclude:
+      - executable:
+          - /usr/sbin/sshd
+          - /usr/sbin/unix_chkpwd
+          - /usr/bin/passwd
+          - /usr/sbin/chpasswd
+          - /usr/sbin/useradd
+          - /usr/sbin/usermod
+          - /usr/sbin/userdel
+          - /usr/sbin/groupadd
+          - /usr/sbin/groupdel
+          - /usr/bin/gpasswd
+          - /usr/bin/chage
+          - /usr/bin/sudo
+          - /usr/bin/su
+          - /usr/bin/login
+          - /usr/sbin/cron
+          - /usr/sbin/pwck
+          - /usr/sbin/grpck
+          - /usr/lib/systemd/systemd
+          - /usr/lib/systemd/systemd-logind
+    explanation: >-
+      The program {executable} accessed {target_path} on behalf of {user}. Hashed account
+      passwords are stored there and are rarely read outside authentication tools.
+    response:
+      - Determine why {executable} accessed the credential store.
+      - Rotate passwords for privileged accounts if the access was not authorised.
+
+  - id: LG-PERS-001
+    name: Account or sudo configuration modified directly
+    description: The passwd, group or sudoers configuration was modified by a non-standard program.
+    severity: high
+    tactic: Persistence
+    technique: T1098
+    match:
+      category: file_modification
+      target_path: {regex: '^/etc/(passwd|group|sudoers|sudoers\.d/.+)$'}
+    exclude:
+      - executable:
+          - /usr/sbin/useradd
+          - /usr/sbin/usermod
+          - /usr/sbin/userdel
+          - /usr/sbin/groupadd
+          - /usr/sbin/groupdel
+          - /usr/sbin/groupmod
+          - /usr/bin/gpasswd
+          - /usr/bin/chfn
+          - /usr/bin/chsh
+          - /usr/bin/passwd
+          - /usr/bin/dpkg
+    explanation: >-
+      {target_path} was modified by {executable} ({user}). Direct edits of account and
+      sudo configuration can create hidden administrator accounts or grant root access.
+    response:
+      - Compare {target_path} with a known-good copy and review newly added entries.
+      - Verify that the change was part of an approved administrative task.
+
+  - id: LG-ACCT-001
+    name: New local account created
+    description: A new user account was added to the system.
+    severity: medium
+    tactic: Persistence
+    technique: T1136.001
+    match:
+      category: account_management
+      action: [add_user, adding_user]
+    explanation: >-
+      A new account {target_user} was created by {user}. Attackers often create accounts
+      to keep access to a compromised host.
+    response:
+      - Confirm that the account {target_user} was created by an approved change.
+
+  - id: LG-ACCT-002
+    name: Account added to privileged group
+    description: A user was added to a group that grants administrative privileges.
+    severity: high
+    tactic: Privilege Escalation
+    technique: T1098
+    match:
+      category: account_management
+      details.group: [sudo, wheel, admin, adm, root, docker, lxd, disk, shadow]
+    explanation: >-
+      The account {target_user} was added to the privileged group {group} by {user},
+      which grants elevated rights on {host}.
+    response:
+      - Remove the membership if it was not approved and review the account's activity.
+
+  - id: LG-EXEC-001
+    name: Execution from temporary directory
+    description: A program was executed from a world-writable temporary location.
+    severity: high
+    tactic: Execution
+    technique: T1204.002
+    match:
+      category: process_execution
+      executable: {prefix: [/tmp/, /var/tmp/, /dev/shm/]}
+    explanation: >-
+      {user} executed {executable} from a world-writable directory. Malware droppers
+      commonly stage and run payloads from these locations.
+    response:
+      - Preserve a copy of {executable} and compute its hash for analysis.
+      - Identify how the file was created by reviewing preceding events in the timeline.
+
+  - id: LG-EXEC-002
+    name: Reverse shell command pattern
+    description: A command line matches a known interactive reverse shell technique.
+    severity: critical
+    tactic: Execution
+    technique: T1059.004
+    match:
+      category: process_execution
+      command_line:
+        regex: '(/dev/(tcp|udp)/|\bnc(at)?\b.*\s-[ec]\s|\bncat\b.*--(sh-)?exec|mkfifo\b.*\b(nc|ncat|sh|bash)\b|\bsocat\b.*\bexec:|python[0-9.]*\s+-c\s.*socket.*(subprocess|pty)|perl\s+-e\s.*socket)'
+    explanation: >-
+      {user} ran a command that redirects a shell over a network connection:
+      "{command_line}". This is a common way to give a remote attacker interactive access.
+    response:
+      - Isolate the host from the network and identify the remote endpoint.
+      - Terminate the process tree and review how the command was launched.
+
+  - id: LG-EXEC-003
+    name: Remote content piped into an interpreter
+    description: Downloaded content was piped directly into a shell or interpreter.
+    severity: high
+    tactic: Command and Control
+    technique: T1105
+    match:
+      category: process_execution
+      command_line:
+        regex: '\b(curl|wget)\b[^|]*\|\s*(sudo\s+)?(bash|sh|zsh|dash|python[0-9.]*|perl)\b'
+    explanation: >-
+      {user} downloaded remote content and executed it immediately: "{command_line}".
+      The executed code was never written to disk for review.
+    response:
+      - Retrieve the URL contents in an isolated environment to determine what was executed.
+
+  - id: LG-EXEC-004
+    name: Shell spawned by a network service
+    description: A command shell was started by a web or application server process.
+    severity: critical
+    tactic: Persistence
+    technique: T1505.003
+    match:
+      category: process_execution
+      executable: {regex: '/(ba|da|z|k)?sh$'}
+      parent_executable: {regex: '(nginx|apache2|httpd|php-fpm[0-9.]*|php[0-9.]*|lighttpd|java|node)$'}
+    explanation: >-
+      The service {parent_executable} started a shell ({executable}). Web servers rarely
+      need shells, so this can indicate a web shell or command injection.
+    response:
+      - Review web server access logs around {first_seen} for the triggering request.
+      - Inspect the web root for recently modified scripts.
+
+  - id: LG-PERS-002
+    name: Scheduled task created or modified
+    description: Cron configuration was modified.
+    severity: medium
+    tactic: Persistence
+    technique: T1053.003
+    match:
+      category: file_modification
+      target_path: {prefix: [/etc/cron, /var/spool/cron/, /etc/anacrontab]}
+    exclude:
+      - executable: [/usr/bin/dpkg]
+    explanation: >-
+      {executable} modified the scheduled task file {target_path}. Cron entries are a
+      simple way to make malicious code run again after a reboot or logout.
+    response:
+      - Review the contents of {target_path} and remove unapproved entries.
+
+  - id: LG-PERS-003
+    name: Systemd unit created or modified
+    description: A systemd service or timer definition was created or changed.
+    severity: medium
+    tactic: Persistence
+    technique: T1543.002
+    match:
+      category: file_modification
+      target_path: {regex: '^(/etc/systemd/system|/usr/lib/systemd/system|/lib/systemd/system|/home/[^/]+/\.config/systemd/user)/[^/]+\.(service|timer)$'}
+    exclude:
+      - executable: [/usr/bin/dpkg, /usr/bin/systemctl]
+    explanation: >-
+      The unit file {target_path} was written by {executable}. New services can be used
+      to start malicious programs automatically.
+    response:
+      - Inspect the ExecStart line of {target_path} and confirm the unit is expected.
+
+  - id: LG-PERS-004
+    name: SSH authorized keys modified
+    description: An SSH authorized_keys file was created or modified.
+    severity: medium
+    tactic: Persistence
+    technique: T1098.004
+    match:
+      category: file_modification
+      target_path: {suffix: [/.ssh/authorized_keys, /.ssh/authorized_keys2]}
+    explanation: >-
+      {target_path} was modified by {executable}. Adding a key grants password-less SSH
+      access to that account.
+    response:
+      - Review the keys in {target_path} and remove any that are not recognised.
+
+  - id: LG-PRIV-001
+    name: Setuid or setgid permission set
+    description: A file was given setuid or setgid permissions.
+    severity: high
+    tactic: Privilege Escalation
+    technique: T1548.001
+    match:
+      category: permission_change
+      file_mode: {mode_any: "6000"}
+    exclude:
+      - executable: [/usr/bin/dpkg]
+    explanation: >-
+      {user} set the setuid/setgid bit on {target_path}. A setuid copy of a shell or other
+      program can be used to regain root privileges later.
+    response:
+      - Remove the special permission bit and check whether {target_path} is a copy of a shell.
+
+  - id: LG-PRIV-002
+    name: Root shell obtained through sudo
+    description: Sudo was used to start an interactive root shell.
+    severity: medium
+    tactic: Privilege Escalation
+    technique: T1548.003
+    match:
+      category: privilege_escalation
+      action: sudo
+      outcome: success
+      command_line: {regex: '^(\S*/)?((ba|da|z|k|c|tc|fi)?sh|su)(\s+-[a-z]*)?\s*$'}
+    explanation: >-
+      {user} used sudo to open an interactive root shell ("{command_line}"). Commands run
+      inside that shell are attributed to root rather than to the user.
+    response:
+      - Review subsequent root activity in the session timeline.
+
+  - id: LG-PRIV-003
+    name: Sudo use denied
+    description: A user who is not allowed to use sudo attempted to run a privileged command.
+    severity: medium
+    tactic: Privilege Escalation
+    technique: T1548.003
+    match:
+      category: privilege_escalation
+      action: sudo
+      outcome: failure
+    explanation: >-
+      {user} attempted to run "{command_line}" with sudo but is not permitted to do so.
+    response:
+      - Check whether the account {user} is behaving unusually or may be compromised.
+
+  - id: LG-KERN-001
+    name: Kernel module loaded
+    description: A kernel module was loaded outside the normal boot process.
+    severity: high
+    tactic: Persistence
+    technique: T1547.006
+    match:
+      category: kernel_module
+      action: [init_module, finit_module]
+    exclude:
+      - executable: [/usr/lib/systemd/systemd-udevd, /usr/lib/systemd/systemd-modules-load]
+    explanation: >-
+      {user} loaded a kernel module using {executable}. Malicious modules (rootkits) run
+      with full kernel privileges and can hide other activity.
+    response:
+      - Identify the module with lsmod and verify its origin and signature.
+
+  - id: LG-DEF-001
+    name: Audit subsystem tampering
+    description: Audit rules were removed, auditing was disabled or the audit daemon was stopped.
+    severity: critical
+    tactic: Defense Evasion
+    technique: T1562.012
+    match:
+      category: audit_configuration
+      any_of:
+        - action: [remove_rule, terminate]
+        - details.audit_enabled: "0"
+    explanation: >-
+      The audit configuration was changed ({action}) by {user}. Disabling auditing is a
+      common step before performing actions an attacker wants to hide.
+    response:
+      - Restore the audit rules and determine who made the change.
+      - Treat events after {last_seen} as potentially incomplete.
+
+  - id: LG-DEF-002
+    name: System log tampering
+    description: Security log files were modified by a program other than a logging service.
+    severity: high
+    tactic: Defense Evasion
+    technique: T1070.002
+    match:
+      category: file_modification
+      target_path:
+        prefix: [/var/log/auth.log, /var/log/syslog, /var/log/secure, /var/log/audit/, /var/log/wtmp, /var/log/btmp, /var/log/lastlog]
+    exclude:
+      - executable:
+          - /usr/sbin/rsyslogd
+          - /usr/sbin/auditd
+          - /usr/sbin/logrotate
+          - /usr/bin/gzip
+          - /usr/lib/systemd/systemd-journald
+          - /usr/lib/systemd/systemd-logind
+          - /usr/sbin/sshd
+          - /usr/bin/login
+          - /usr/sbin/cron
+    explanation: >-
+      {executable} modified the log file {target_path}. Deleting or truncating logs is a
+      common way to hide evidence of an intrusion.
+    response:
+      - Preserve remaining logs and compare them with any remote log copies.
+
+  - id: LG-DISC-001
+    name: Burst of discovery commands
+    description: Many different system discovery commands were run in one session.
+    severity: low
+    tactic: Discovery
+    technique: T1082
+    match:
+      category: process_execution
+      process_name: [whoami, id, uname, hostname, ifconfig, ip, netstat, ss, ps, w, who, last, lsof, groups, getent, arp, route, lscpu, crontab]
+    threshold:
+      count: 6
+      distinct: process_name
+      window_seconds: 60
+      group_by: [session_id]
+    explanation: >-
+      {count} different discovery commands ({distinct_values}) were run in one session by
+      {user}. Attackers typically enumerate a host immediately after gaining access.
+    response:
+      - Review the full session timeline to determine whether this was routine administration.
+
+  - id: LG-NET-001
+    name: Outbound connection from shell or netcat
+    description: A shell or raw socket utility opened a network connection.
+    severity: high
+    tactic: Command and Control
+    technique: T1095
+    match:
+      category: network_connection
+      process_name: [bash, sh, dash, zsh, ksh, nc, ncat, netcat, socat, telnet]
+      dest_port: {not_in: [53]}
+    exclude:
+      - dest_ip: {prefix: ["127.", "::1"]}
+    explanation: >-
+      {process_name} connected to {dest_ip}:{dest_port}. Shells and netcat-style tools do
+      not normally make network connections and are often used for remote control channels.
+    response:
+      - Identify the remote endpoint {dest_ip} and block it if it is not recognised.
