@@ -1,0 +1,1535 @@
+{
+  "seeds": [
+    1,
+    2,
+    3,
+    4,
+    5
+  ],
+  "test_events": {
+    "mean": 4400.2,
+    "std": 111.54012730851619
+  },
+  "test_cases": {
+    "mean": 93.6,
+    "std": 0.5477225575051661
+  },
+  "training_windows": {
+    "mean": 2780.0,
+    "std": 152.62863427286507
+  },
+  "parsing": {
+    "events_per_second": {
+      "mean": 3279.42877891932,
+      "std": 70.5106289177372
+    },
+    "peak_memory_mb": {
+      "mean": 9.1340181350708,
+      "std": 0.24416526148439277
+    }
+  },
+  "training": {
+    "wall_seconds": {
+      "mean": 2.1533597200002985,
+      "std": 0.057136588489480354
+    },
+    "peak_memory_mb": {
+      "mean": 3.673259735107422,
+      "std": 0.1654121312839681
+    }
+  },
+  "process_rss_mb": 279.52734375,
+  "configurations": {
+    "rules": {
+      "label": "Baseline A: rules only",
+      "metrics": {
+        "alerts": {
+          "mean": 44.6,
+          "std": 0.5477225575051661
+        },
+        "correct_alerts": {
+          "mean": 39.8,
+          "std": 0.4472135954999579
+        },
+        "alert_precision": {
+          "mean": 0.8924242424242423,
+          "std": 0.00938089677828622
+        },
+        "case_precision": {
+          "mean": 0.87638326585695,
+          "std": 0.010259961030363404
+        },
+        "recall": {
+          "mean": 0.7083333333333334,
+          "std": 0.0
+        },
+        "false_positive_rate": {
+          "mean": 0.10531400966183575,
+          "std": 0.010332970838747553
+        },
+        "f1": {
+          "mean": 0.78342689120556,
+          "std": 0.00406449137850805
+        },
+        "malicious_cases": {
+          "mean": 48.0,
+          "std": 0.0
+        },
+        "detected_malicious": {
+          "mean": 34.0,
+          "std": 0.0
+        },
+        "benign_cases": {
+          "mean": 45.6,
+          "std": 0.5477225575051661
+        },
+        "flagged_benign": {
+          "mean": 4.8,
+          "std": 0.4472135954999579
+        },
+        "mean_delay_seconds": {
+          "mean": 10.485452727710499,
+          "std": 0.5576308409756757
+        },
+        "median_delay_seconds": {
+          "mean": 5.200071787834167,
+          "std": 7.065930905690807e-05
+        }
+      },
+      "resources": {
+        "wall_seconds": {
+          "mean": 0.37101112000091235,
+          "std": 0.016273913948874393
+        },
+        "cpu_seconds": {
+          "mean": 0.365625,
+          "std": 0.013975424859373685
+        },
+        "peak_memory_mb": {
+          "mean": 0.03680400848388672,
+          "std": 0.002570063849575021
+        },
+        "milliseconds_per_event": {
+          "mean": 0.08439832780855351,
+          "std": 0.005189860688079972
+        },
+        "events_per_second": {
+          "mean": 11883.12972304051,
+          "std": 702.745677275539
+        },
+        "storage_kb": {
+          "mean": 7036.0,
+          "std": 149.50585272824605
+        }
+      },
+      "scenarios": {
+        "off_hours_privileged_activity": {
+          "detected": 0,
+          "total": 10
+        },
+        "data_exfiltration": {
+          "detected": 0,
+          "total": 10
+        },
+        "credential_hunting": {
+          "detected": 0,
+          "total": 10
+        },
+        "internal_network_scan": {
+          "detected": 0,
+          "total": 10
+        },
+        "web_shell": {
+          "detected": 10,
+          "total": 10
+        },
+        "cryptominer": {
+          "detected": 0,
+          "total": 10
+        },
+        "cron_persistence": {
+          "detected": 10,
+          "total": 10
+        },
+        "credential_file_access": {
+          "detected": 10,
+          "total": 10
+        },
+        "log_tampering": {
+          "detected": 10,
+          "total": 10
+        },
+        "brute_force_success": {
+          "detected": 10,
+          "total": 10
+        },
+        "discovery_burst": {
+          "detected": 10,
+          "total": 10
+        },
+        "download_and_execute": {
+          "detected": 10,
+          "total": 10
+        },
+        "reverse_shell": {
+          "detected": 10,
+          "total": 10
+        },
+        "kernel_module_load": {
+          "detected": 10,
+          "total": 10
+        },
+        "sudoers_modification": {
+          "detected": 10,
+          "total": 10
+        },
+        "ssh_brute_force": {
+          "detected": 10,
+          "total": 10
+        },
+        "setuid_backdoor": {
+          "detected": 10,
+          "total": 10
+        },
+        "ssh_key_persistence": {
+          "detected": 10,
+          "total": 10
+        },
+        "audit_tampering": {
+          "detected": 10,
+          "total": 10
+        },
+        "dropped_implant_beacon": {
+          "detected": 0,
+          "total": 10
+        },
+        "temporary_directory_execution": {
+          "detected": 10,
+          "total": 10
+        },
+        "mass_file_encryption": {
+          "detected": 0,
+          "total": 10
+        },
+        "password_spray": {
+          "detected": 10,
+          "total": 10
+        },
+        "backdoor_account": {
+          "detected": 10,
+          "total": 10
+        },
+        "scheduled_jobs": {
+          "detected": 0,
+          "total": 120
+        },
+        "work_session": {
+          "detected": 2,
+          "total": 48
+        },
+        "backup_job": {
+          "detected": 0,
+          "total": 10
+        },
+        "system_update": {
+          "detected": 0,
+          "total": 10
+        },
+        "developer_build": {
+          "detected": 0,
+          "total": 10
+        },
+        "administrator_troubleshooting": {
+          "detected": 10,
+          "total": 10
+        },
+        "password_typo": {
+          "detected": 2,
+          "total": 10
+        },
+        "administrator_account_creation": {
+          "detected": 10,
+          "total": 10
+        }
+      }
+    },
+    "hybrid": {
+      "label": "Baseline B: rules + anomaly detector",
+      "metrics": {
+        "alerts": {
+          "mean": 62.8,
+          "std": 2.3874672772626644
+        },
+        "correct_alerts": {
+          "mean": 52.8,
+          "std": 2.588435821108957
+        },
+        "alert_precision": {
+          "mean": 0.8408826544559869,
+          "std": 0.029814196936167173
+        },
+        "case_precision": {
+          "mean": 0.8239711884753902,
+          "std": 0.016934428210100983
+        },
+        "recall": {
+          "mean": 0.8583333333333334,
+          "std": 0.022821773229381902
+        },
+        "false_positive_rate": {
+          "mean": 0.19304347826086957,
+          "std": 0.019131288713679414
+        },
+        "f1": {
+          "mean": 0.840767872284809,
+          "std": 0.01903963729959943
+        },
+        "malicious_cases": {
+          "mean": 48.0,
+          "std": 0.0
+        },
+        "detected_malicious": {
+          "mean": 41.2,
+          "std": 1.0954451150103321
+        },
+        "benign_cases": {
+          "mean": 45.6,
+          "std": 0.5477225575051661
+        },
+        "flagged_benign": {
+          "mean": 8.8,
+          "std": 0.8366600265340756
+        },
+        "mean_delay_seconds": {
+          "mean": 17.712495664074307,
+          "std": 2.20535726641918
+        },
+        "median_delay_seconds": {
+          "mean": 5.8399803876876835,
+          "std": 0.2190258355870623
+        }
+      },
+      "resources": {
+        "wall_seconds": {
+          "mean": 13.043904459998885,
+          "std": 0.5282637641080395
+        },
+        "cpu_seconds": {
+          "mean": 12.85625,
+          "std": 0.4785945406865816
+        },
+        "peak_memory_mb": {
+          "mean": 3.9265670776367188,
+          "std": 0.8926050851219476
+        },
+        "milliseconds_per_event": {
+          "mean": 2.96505774450272,
+          "std": 0.11792857160043863
+        },
+        "events_per_second": {
+          "mean": 337.669264883131,
+          "std": 12.815098198719552
+        },
+        "storage_kb": {
+          "mean": 7240.8,
+          "std": 144.06665124170826
+        }
+      },
+      "scenarios": {
+        "off_hours_privileged_activity": {
+          "detected": 0,
+          "total": 10
+        },
+        "data_exfiltration": {
+          "detected": 10,
+          "total": 10
+        },
+        "credential_hunting": {
+          "detected": 0,
+          "total": 10
+        },
+        "internal_network_scan": {
+          "detected": 10,
+          "total": 10
+        },
+        "web_shell": {
+          "detected": 10,
+          "total": 10
+        },
+        "cryptominer": {
+          "detected": 6,
+          "total": 10
+        },
+        "cron_persistence": {
+          "detected": 10,
+          "total": 10
+        },
+        "credential_file_access": {
+          "detected": 10,
+          "total": 10
+        },
+        "log_tampering": {
+          "detected": 10,
+          "total": 10
+        },
+        "brute_force_success": {
+          "detected": 10,
+          "total": 10
+        },
+        "discovery_burst": {
+          "detected": 10,
+          "total": 10
+        },
+        "download_and_execute": {
+          "detected": 10,
+          "total": 10
+        },
+        "reverse_shell": {
+          "detected": 10,
+          "total": 10
+        },
+        "kernel_module_load": {
+          "detected": 10,
+          "total": 10
+        },
+        "sudoers_modification": {
+          "detected": 10,
+          "total": 10
+        },
+        "ssh_brute_force": {
+          "detected": 10,
+          "total": 10
+        },
+        "setuid_backdoor": {
+          "detected": 10,
+          "total": 10
+        },
+        "ssh_key_persistence": {
+          "detected": 10,
+          "total": 10
+        },
+        "audit_tampering": {
+          "detected": 10,
+          "total": 10
+        },
+        "dropped_implant_beacon": {
+          "detected": 0,
+          "total": 10
+        },
+        "temporary_directory_execution": {
+          "detected": 10,
+          "total": 10
+        },
+        "mass_file_encryption": {
+          "detected": 10,
+          "total": 10
+        },
+        "password_spray": {
+          "detected": 10,
+          "total": 10
+        },
+        "backdoor_account": {
+          "detected": 10,
+          "total": 10
+        },
+        "scheduled_jobs": {
+          "detected": 0,
+          "total": 120
+        },
+        "work_session": {
+          "detected": 13,
+          "total": 48
+        },
+        "backup_job": {
+          "detected": 0,
+          "total": 10
+        },
+        "system_update": {
+          "detected": 9,
+          "total": 10
+        },
+        "developer_build": {
+          "detected": 0,
+          "total": 10
+        },
+        "administrator_troubleshooting": {
+          "detected": 10,
+          "total": 10
+        },
+        "password_typo": {
+          "detected": 2,
+          "total": 10
+        },
+        "administrator_account_creation": {
+          "detected": 10,
+          "total": 10
+        }
+      }
+    },
+    "hybrid_forest_only": {
+      "label": "Rules + Isolation Forest without range guard",
+      "metrics": {
+        "alerts": {
+          "mean": 54.8,
+          "std": 2.16794833886788
+        },
+        "correct_alerts": {
+          "mean": 44.8,
+          "std": 3.420526275297414
+        },
+        "alert_precision": {
+          "mean": 0.8169229876126428,
+          "std": 0.039139471791240124
+        },
+        "case_precision": {
+          "mean": 0.8084325213279884,
+          "std": 0.021086308694678403
+        },
+        "recall": {
+          "mean": 0.775,
+          "std": 0.03423265984407289
+        },
+        "false_positive_rate": {
+          "mean": 0.19304347826086957,
+          "std": 0.019131288713679414
+        },
+        "f1": {
+          "mean": 0.7912889980613855,
+          "std": 0.027570901763653986
+        },
+        "malicious_cases": {
+          "mean": 48.0,
+          "std": 0.0
+        },
+        "detected_malicious": {
+          "mean": 37.2,
+          "std": 1.6431676725154984
+        },
+        "benign_cases": {
+          "mean": 45.6,
+          "std": 0.5477225575051661
+        },
+        "flagged_benign": {
+          "mean": 8.8,
+          "std": 0.8366600265340756
+        },
+        "mean_delay_seconds": {
+          "mean": 15.144125976791864,
+          "std": 3.262693055035613
+        },
+        "median_delay_seconds": {
+          "mean": 5.200268197059631,
+          "std": 4.767362666682808e-05
+        }
+      },
+      "resources": {
+        "wall_seconds": {
+          "mean": 14.398985320000065,
+          "std": 2.826955913445303
+        },
+        "cpu_seconds": {
+          "mean": 14.18125,
+          "std": 2.77887011942354
+        },
+        "peak_memory_mb": {
+          "mean": 3.831081199645996,
+          "std": 0.7387155602625589
+        },
+        "milliseconds_per_event": {
+          "mean": 3.2712899635790675,
+          "std": 0.6346957038595543
+        },
+        "events_per_second": {
+          "mean": 313.4820289527151,
+          "std": 50.40713113509433
+        },
+        "storage_kb": {
+          "mean": 7096.0,
+          "std": 151.57836257197133
+        }
+      },
+      "scenarios": {
+        "off_hours_privileged_activity": {
+          "detected": 0,
+          "total": 10
+        },
+        "data_exfiltration": {
+          "detected": 9,
+          "total": 10
+        },
+        "credential_hunting": {
+          "detected": 0,
+          "total": 10
+        },
+        "internal_network_scan": {
+          "detected": 1,
+          "total": 10
+        },
+        "web_shell": {
+          "detected": 10,
+          "total": 10
+        },
+        "cryptominer": {
+          "detected": 6,
+          "total": 10
+        },
+        "cron_persistence": {
+          "detected": 10,
+          "total": 10
+        },
+        "credential_file_access": {
+          "detected": 10,
+          "total": 10
+        },
+        "log_tampering": {
+          "detected": 10,
+          "total": 10
+        },
+        "brute_force_success": {
+          "detected": 10,
+          "total": 10
+        },
+        "discovery_burst": {
+          "detected": 10,
+          "total": 10
+        },
+        "download_and_execute": {
+          "detected": 10,
+          "total": 10
+        },
+        "reverse_shell": {
+          "detected": 10,
+          "total": 10
+        },
+        "kernel_module_load": {
+          "detected": 10,
+          "total": 10
+        },
+        "sudoers_modification": {
+          "detected": 10,
+          "total": 10
+        },
+        "ssh_brute_force": {
+          "detected": 10,
+          "total": 10
+        },
+        "setuid_backdoor": {
+          "detected": 10,
+          "total": 10
+        },
+        "ssh_key_persistence": {
+          "detected": 10,
+          "total": 10
+        },
+        "audit_tampering": {
+          "detected": 10,
+          "total": 10
+        },
+        "dropped_implant_beacon": {
+          "detected": 0,
+          "total": 10
+        },
+        "temporary_directory_execution": {
+          "detected": 10,
+          "total": 10
+        },
+        "mass_file_encryption": {
+          "detected": 0,
+          "total": 10
+        },
+        "password_spray": {
+          "detected": 10,
+          "total": 10
+        },
+        "backdoor_account": {
+          "detected": 10,
+          "total": 10
+        },
+        "scheduled_jobs": {
+          "detected": 0,
+          "total": 120
+        },
+        "work_session": {
+          "detected": 13,
+          "total": 48
+        },
+        "backup_job": {
+          "detected": 0,
+          "total": 10
+        },
+        "system_update": {
+          "detected": 9,
+          "total": 10
+        },
+        "developer_build": {
+          "detected": 0,
+          "total": 10
+        },
+        "administrator_troubleshooting": {
+          "detected": 10,
+          "total": 10
+        },
+        "password_typo": {
+          "detected": 2,
+          "total": 10
+        },
+        "administrator_account_creation": {
+          "detected": 10,
+          "total": 10
+        }
+      }
+    },
+    "anomaly_only": {
+      "label": "Anomaly detector only (reference)",
+      "metrics": {
+        "alerts": {
+          "mean": 18.2,
+          "std": 2.4899799195977463
+        },
+        "correct_alerts": {
+          "mean": 13.0,
+          "std": 2.449489742783178
+        },
+        "alert_precision": {
+          "mean": 0.7146115288220551,
+          "std": 0.09074912491086339
+        },
+        "case_precision": {
+          "mean": 0.7066666666666667,
+          "std": 0.059628479399994425
+        },
+        "recall": {
+          "mean": 0.2125,
+          "std": 0.030900827029565262
+        },
+        "false_positive_rate": {
+          "mean": 0.09207729468599032,
+          "std": 0.01827977448428054
+        },
+        "f1": {
+          "mean": 0.32634920634920633,
+          "std": 0.04249701722077843
+        },
+        "malicious_cases": {
+          "mean": 48.0,
+          "std": 0.0
+        },
+        "detected_malicious": {
+          "mean": 10.2,
+          "std": 1.4832396974191326
+        },
+        "benign_cases": {
+          "mean": 45.6,
+          "std": 0.5477225575051661
+        },
+        "flagged_benign": {
+          "mean": 4.2,
+          "std": 0.8366600265340756
+        },
+        "mean_delay_seconds": {
+          "mean": 49.165912196419455,
+          "std": 6.752820651607075
+        },
+        "median_delay_seconds": {
+          "mean": 45.611913442611694,
+          "std": 9.881520306334673
+        }
+      },
+      "resources": {
+        "wall_seconds": {
+          "mean": 14.070631179999328,
+          "std": 3.2056662777867513
+        },
+        "cpu_seconds": {
+          "mean": 13.803125,
+          "std": 3.124640604333561
+        },
+        "peak_memory_mb": {
+          "mean": 4.402983283996582,
+          "std": 0.09577663513340166
+        },
+        "milliseconds_per_event": {
+          "mean": 3.191273552490938,
+          "std": 0.6871111080445953
+        },
+        "events_per_second": {
+          "mean": 324.392368299243,
+          "std": 64.18553510624457
+        },
+        "storage_kb": {
+          "mean": 7208.0,
+          "std": 144.11106827721457
+        }
+      },
+      "scenarios": {
+        "off_hours_privileged_activity": {
+          "detected": 0,
+          "total": 10
+        },
+        "data_exfiltration": {
+          "detected": 10,
+          "total": 10
+        },
+        "credential_hunting": {
+          "detected": 0,
+          "total": 10
+        },
+        "internal_network_scan": {
+          "detected": 10,
+          "total": 10
+        },
+        "web_shell": {
+          "detected": 0,
+          "total": 10
+        },
+        "cryptominer": {
+          "detected": 6,
+          "total": 10
+        },
+        "cron_persistence": {
+          "detected": 0,
+          "total": 10
+        },
+        "credential_file_access": {
+          "detected": 0,
+          "total": 10
+        },
+        "log_tampering": {
+          "detected": 0,
+          "total": 10
+        },
+        "brute_force_success": {
+          "detected": 3,
+          "total": 10
+        },
+        "discovery_burst": {
+          "detected": 0,
+          "total": 10
+        },
+        "download_and_execute": {
+          "detected": 0,
+          "total": 10
+        },
+        "reverse_shell": {
+          "detected": 0,
+          "total": 10
+        },
+        "kernel_module_load": {
+          "detected": 0,
+          "total": 10
+        },
+        "sudoers_modification": {
+          "detected": 0,
+          "total": 10
+        },
+        "ssh_brute_force": {
+          "detected": 10,
+          "total": 10
+        },
+        "setuid_backdoor": {
+          "detected": 0,
+          "total": 10
+        },
+        "ssh_key_persistence": {
+          "detected": 0,
+          "total": 10
+        },
+        "audit_tampering": {
+          "detected": 0,
+          "total": 10
+        },
+        "dropped_implant_beacon": {
+          "detected": 0,
+          "total": 10
+        },
+        "temporary_directory_execution": {
+          "detected": 0,
+          "total": 10
+        },
+        "mass_file_encryption": {
+          "detected": 10,
+          "total": 10
+        },
+        "password_spray": {
+          "detected": 0,
+          "total": 10
+        },
+        "backdoor_account": {
+          "detected": 2,
+          "total": 10
+        },
+        "scheduled_jobs": {
+          "detected": 0,
+          "total": 120
+        },
+        "work_session": {
+          "detected": 12,
+          "total": 48
+        },
+        "backup_job": {
+          "detected": 0,
+          "total": 10
+        },
+        "system_update": {
+          "detected": 9,
+          "total": 10
+        },
+        "developer_build": {
+          "detected": 0,
+          "total": 10
+        },
+        "administrator_troubleshooting": {
+          "detected": 0,
+          "total": 10
+        },
+        "password_typo": {
+          "detected": 0,
+          "total": 10
+        },
+        "administrator_account_creation": {
+          "detected": 0,
+          "total": 10
+        }
+      }
+    },
+    "forest_only": {
+      "label": "Isolation Forest only, no guard (reference)",
+      "metrics": {
+        "alerts": {
+          "mean": 10.2,
+          "std": 2.280350850198276
+        },
+        "correct_alerts": {
+          "mean": 5.0,
+          "std": 3.391164991562634
+        },
+        "alert_precision": {
+          "mean": 0.46178266178266175,
+          "std": 0.2375138009258722
+        },
+        "case_precision": {
+          "mean": 0.4288888888888889,
+          "std": 0.19792129624214982
+        },
+        "recall": {
+          "mean": 0.075,
+          "std": 0.04796193513842224
+        },
+        "false_positive_rate": {
+          "mean": 0.09207729468599032,
+          "std": 0.01827977448428054
+        },
+        "f1": {
+          "mean": 0.1271396883012128,
+          "std": 0.07811323881464795
+        },
+        "malicious_cases": {
+          "mean": 48.0,
+          "std": 0.0
+        },
+        "detected_malicious": {
+          "mean": 3.6,
+          "std": 2.3021728866442674
+        },
+        "benign_cases": {
+          "mean": 45.6,
+          "std": 0.5477225575051661
+        },
+        "flagged_benign": {
+          "mean": 4.2,
+          "std": 0.8366600265340756
+        },
+        "mean_delay_seconds": {
+          "mean": 57.55286361660276,
+          "std": 17.510049784815894
+        },
+        "median_delay_seconds": {
+          "mean": 55.71515941619873,
+          "std": 17.13085243330868
+        }
+      },
+      "resources": {
+        "wall_seconds": {
+          "mean": 13.856345880001026,
+          "std": 3.27924798385441
+        },
+        "cpu_seconds": {
+          "mean": 13.534375,
+          "std": 3.100635488039105
+        },
+        "peak_memory_mb": {
+          "mean": 4.384697151184082,
+          "std": 0.09557821654127471
+        },
+        "milliseconds_per_event": {
+          "mean": 3.1388886642792895,
+          "std": 0.6716906227415773
+        },
+        "events_per_second": {
+          "mean": 329.15204756747556,
+          "std": 62.03642490476277
+        },
+        "storage_kb": {
+          "mean": 7068.8,
+          "std": 148.36172013022767
+        }
+      },
+      "scenarios": {
+        "off_hours_privileged_activity": {
+          "detected": 0,
+          "total": 10
+        },
+        "data_exfiltration": {
+          "detected": 9,
+          "total": 10
+        },
+        "credential_hunting": {
+          "detected": 0,
+          "total": 10
+        },
+        "internal_network_scan": {
+          "detected": 1,
+          "total": 10
+        },
+        "web_shell": {
+          "detected": 0,
+          "total": 10
+        },
+        "cryptominer": {
+          "detected": 6,
+          "total": 10
+        },
+        "cron_persistence": {
+          "detected": 0,
+          "total": 10
+        },
+        "credential_file_access": {
+          "detected": 0,
+          "total": 10
+        },
+        "log_tampering": {
+          "detected": 0,
+          "total": 10
+        },
+        "brute_force_success": {
+          "detected": 0,
+          "total": 10
+        },
+        "discovery_burst": {
+          "detected": 0,
+          "total": 10
+        },
+        "download_and_execute": {
+          "detected": 0,
+          "total": 10
+        },
+        "reverse_shell": {
+          "detected": 0,
+          "total": 10
+        },
+        "kernel_module_load": {
+          "detected": 0,
+          "total": 10
+        },
+        "sudoers_modification": {
+          "detected": 0,
+          "total": 10
+        },
+        "ssh_brute_force": {
+          "detected": 0,
+          "total": 10
+        },
+        "setuid_backdoor": {
+          "detected": 0,
+          "total": 10
+        },
+        "ssh_key_persistence": {
+          "detected": 0,
+          "total": 10
+        },
+        "audit_tampering": {
+          "detected": 0,
+          "total": 10
+        },
+        "dropped_implant_beacon": {
+          "detected": 0,
+          "total": 10
+        },
+        "temporary_directory_execution": {
+          "detected": 0,
+          "total": 10
+        },
+        "mass_file_encryption": {
+          "detected": 0,
+          "total": 10
+        },
+        "password_spray": {
+          "detected": 0,
+          "total": 10
+        },
+        "backdoor_account": {
+          "detected": 2,
+          "total": 10
+        },
+        "scheduled_jobs": {
+          "detected": 0,
+          "total": 120
+        },
+        "work_session": {
+          "detected": 12,
+          "total": 48
+        },
+        "backup_job": {
+          "detected": 0,
+          "total": 10
+        },
+        "system_update": {
+          "detected": 9,
+          "total": 10
+        },
+        "developer_build": {
+          "detected": 0,
+          "total": 10
+        },
+        "administrator_troubleshooting": {
+          "detected": 0,
+          "total": 10
+        },
+        "password_typo": {
+          "detected": 0,
+          "total": 10
+        },
+        "administrator_account_creation": {
+          "detected": 0,
+          "total": 10
+        }
+      }
+    },
+    "hybrid_q990": {
+      "label": "Rules + anomaly detector (q=0.990)",
+      "metrics": {
+        "alerts": {
+          "mean": 75.0,
+          "std": 3.082207001484488
+        },
+        "correct_alerts": {
+          "mean": 60.6,
+          "std": 1.51657508881031
+        },
+        "alert_precision": {
+          "mean": 0.8087050861544398,
+          "std": 0.02671929160315346
+        },
+        "case_precision": {
+          "mean": 0.7866895368782162,
+          "std": 0.012887115616465347
+        },
+        "recall": {
+          "mean": 0.875,
+          "std": 0.0
+        },
+        "false_positive_rate": {
+          "mean": 0.249951690821256,
+          "std": 0.01844816152320011
+        },
+        "f1": {
+          "mean": 0.8284533307699702,
+          "std": 0.0072221363110634325
+        },
+        "malicious_cases": {
+          "mean": 48.0,
+          "std": 0.0
+        },
+        "detected_malicious": {
+          "mean": 42.0,
+          "std": 0.0
+        },
+        "benign_cases": {
+          "mean": 45.6,
+          "std": 0.5477225575051661
+        },
+        "flagged_benign": {
+          "mean": 11.4,
+          "std": 0.8944271909999159
+        },
+        "mean_delay_seconds": {
+          "mean": 17.50380650020781,
+          "std": 0.61785206931022
+        },
+        "median_delay_seconds": {
+          "mean": 5.999984264373779,
+          "std": 9.052895826647208e-05
+        }
+      },
+      "resources": {
+        "wall_seconds": {
+          "mean": 14.388846639999247,
+          "std": 3.578782181450342
+        },
+        "cpu_seconds": {
+          "mean": 14.146875,
+          "std": 3.4578516858376096
+        },
+        "peak_memory_mb": {
+          "mean": 3.8980840682983398,
+          "std": 0.763886219646055
+        },
+        "milliseconds_per_event": {
+          "mean": 3.2584284406357638,
+          "std": 0.7262081640248552
+        },
+        "events_per_second": {
+          "mean": 316.64225319429573,
+          "std": 54.72426861815299
+        },
+        "storage_kb": {
+          "mean": 7280.8,
+          "std": 145.61318621608416
+        }
+      },
+      "scenarios": {
+        "off_hours_privileged_activity": {
+          "detected": 0,
+          "total": 10
+        },
+        "data_exfiltration": {
+          "detected": 10,
+          "total": 10
+        },
+        "credential_hunting": {
+          "detected": 0,
+          "total": 10
+        },
+        "internal_network_scan": {
+          "detected": 10,
+          "total": 10
+        },
+        "web_shell": {
+          "detected": 10,
+          "total": 10
+        },
+        "cryptominer": {
+          "detected": 10,
+          "total": 10
+        },
+        "cron_persistence": {
+          "detected": 10,
+          "total": 10
+        },
+        "credential_file_access": {
+          "detected": 10,
+          "total": 10
+        },
+        "log_tampering": {
+          "detected": 10,
+          "total": 10
+        },
+        "brute_force_success": {
+          "detected": 10,
+          "total": 10
+        },
+        "discovery_burst": {
+          "detected": 10,
+          "total": 10
+        },
+        "download_and_execute": {
+          "detected": 10,
+          "total": 10
+        },
+        "reverse_shell": {
+          "detected": 10,
+          "total": 10
+        },
+        "kernel_module_load": {
+          "detected": 10,
+          "total": 10
+        },
+        "sudoers_modification": {
+          "detected": 10,
+          "total": 10
+        },
+        "ssh_brute_force": {
+          "detected": 10,
+          "total": 10
+        },
+        "setuid_backdoor": {
+          "detected": 10,
+          "total": 10
+        },
+        "ssh_key_persistence": {
+          "detected": 10,
+          "total": 10
+        },
+        "audit_tampering": {
+          "detected": 10,
+          "total": 10
+        },
+        "dropped_implant_beacon": {
+          "detected": 0,
+          "total": 10
+        },
+        "temporary_directory_execution": {
+          "detected": 10,
+          "total": 10
+        },
+        "mass_file_encryption": {
+          "detected": 10,
+          "total": 10
+        },
+        "password_spray": {
+          "detected": 10,
+          "total": 10
+        },
+        "backdoor_account": {
+          "detected": 10,
+          "total": 10
+        },
+        "scheduled_jobs": {
+          "detected": 0,
+          "total": 120
+        },
+        "work_session": {
+          "detected": 25,
+          "total": 48
+        },
+        "backup_job": {
+          "detected": 0,
+          "total": 10
+        },
+        "system_update": {
+          "detected": 10,
+          "total": 10
+        },
+        "developer_build": {
+          "detected": 0,
+          "total": 10
+        },
+        "administrator_troubleshooting": {
+          "detected": 10,
+          "total": 10
+        },
+        "password_typo": {
+          "detected": 2,
+          "total": 10
+        },
+        "administrator_account_creation": {
+          "detected": 10,
+          "total": 10
+        }
+      }
+    },
+    "hybrid_q999": {
+      "label": "Rules + anomaly detector (q=0.999)",
+      "metrics": {
+        "alerts": {
+          "mean": 55.4,
+          "std": 2.5099800796022267
+        },
+        "correct_alerts": {
+          "mean": 48.6,
+          "std": 2.3021728866442674
+        },
+        "alert_precision": {
+          "mean": 0.8772129887029042,
+          "std": 0.007193071020584957
+        },
+        "case_precision": {
+          "mean": 0.8509593623562172,
+          "std": 0.007463180618188016
+        },
+        "recall": {
+          "mean": 0.8083333333333333,
+          "std": 0.01743041721945994
+        },
+        "false_positive_rate": {
+          "mean": 0.14917874396135267,
+          "std": 0.010613736560077029
+        },
+        "f1": {
+          "mean": 0.828994197768002,
+          "std": 0.008952814702830082
+        },
+        "malicious_cases": {
+          "mean": 48.0,
+          "std": 0.0
+        },
+        "detected_malicious": {
+          "mean": 38.8,
+          "std": 0.8366600265340756
+        },
+        "benign_cases": {
+          "mean": 45.6,
+          "std": 0.5477225575051661
+        },
+        "flagged_benign": {
+          "mean": 6.8,
+          "std": 0.4472135954999579
+        },
+        "mean_delay_seconds": {
+          "mean": 14.373963451435369,
+          "std": 0.9054398233075607
+        },
+        "median_delay_seconds": {
+          "mean": 5.2802852392196655,
+          "std": 0.178720278134239
+        }
+      },
+      "resources": {
+        "wall_seconds": {
+          "mean": 14.087662879999698,
+          "std": 2.4802629088420636
+        },
+        "cpu_seconds": {
+          "mean": 13.83125,
+          "std": 2.2862317180789002
+        },
+        "peak_memory_mb": {
+          "mean": 3.6453483581542967,
+          "std": 0.8750340731905902
+        },
+        "milliseconds_per_event": {
+          "mean": 3.1949342378146692,
+          "std": 0.4924043283031618
+        },
+        "events_per_second": {
+          "mean": 318.14292263214776,
+          "std": 41.85123680178466
+        },
+        "storage_kb": {
+          "mean": 7203.2,
+          "std": 140.03999428734636
+        }
+      },
+      "scenarios": {
+        "off_hours_privileged_activity": {
+          "detected": 0,
+          "total": 10
+        },
+        "data_exfiltration": {
+          "detected": 4,
+          "total": 10
+        },
+        "credential_hunting": {
+          "detected": 0,
+          "total": 10
+        },
+        "internal_network_scan": {
+          "detected": 10,
+          "total": 10
+        },
+        "web_shell": {
+          "detected": 10,
+          "total": 10
+        },
+        "cryptominer": {
+          "detected": 0,
+          "total": 10
+        },
+        "cron_persistence": {
+          "detected": 10,
+          "total": 10
+        },
+        "credential_file_access": {
+          "detected": 10,
+          "total": 10
+        },
+        "log_tampering": {
+          "detected": 10,
+          "total": 10
+        },
+        "brute_force_success": {
+          "detected": 10,
+          "total": 10
+        },
+        "discovery_burst": {
+          "detected": 10,
+          "total": 10
+        },
+        "download_and_execute": {
+          "detected": 10,
+          "total": 10
+        },
+        "reverse_shell": {
+          "detected": 10,
+          "total": 10
+        },
+        "kernel_module_load": {
+          "detected": 10,
+          "total": 10
+        },
+        "sudoers_modification": {
+          "detected": 10,
+          "total": 10
+        },
+        "ssh_brute_force": {
+          "detected": 10,
+          "total": 10
+        },
+        "setuid_backdoor": {
+          "detected": 10,
+          "total": 10
+        },
+        "ssh_key_persistence": {
+          "detected": 10,
+          "total": 10
+        },
+        "audit_tampering": {
+          "detected": 10,
+          "total": 10
+        },
+        "dropped_implant_beacon": {
+          "detected": 0,
+          "total": 10
+        },
+        "temporary_directory_execution": {
+          "detected": 10,
+          "total": 10
+        },
+        "mass_file_encryption": {
+          "detected": 10,
+          "total": 10
+        },
+        "password_spray": {
+          "detected": 10,
+          "total": 10
+        },
+        "backdoor_account": {
+          "detected": 10,
+          "total": 10
+        },
+        "scheduled_jobs": {
+          "detected": 0,
+          "total": 120
+        },
+        "work_session": {
+          "detected": 5,
+          "total": 48
+        },
+        "backup_job": {
+          "detected": 0,
+          "total": 10
+        },
+        "system_update": {
+          "detected": 7,
+          "total": 10
+        },
+        "developer_build": {
+          "detected": 0,
+          "total": 10
+        },
+        "administrator_troubleshooting": {
+          "detected": 10,
+          "total": 10
+        },
+        "password_typo": {
+          "detected": 2,
+          "total": 10
+        },
+        "administrator_account_creation": {
+          "detected": 10,
+          "total": 10
+        }
+      }
+    }
+  }
+}
