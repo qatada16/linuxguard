@@ -297,8 +297,8 @@ label it as a clean training baseline. Detection, ML, reports, dashboard and
 evaluation modules remain placeholders. Historical key verification covers the
 listed probes, not every watched path or possible action.
 
-There are 125 passing local tests: the earlier 83, 27 rule-engine, six scenario-runner,
-and nine Phase 7 feature/ML/evaluation tests. The rule tests use synthetic, clearly labelled audit
+There are 140 passing local tests: the earlier 83, 27 rule-engine, seven scenario-runner,
+nine Phase 7 feature/ML/evaluation tests, and seven Phase 8 storage/report/dashboard tests. The rule tests use synthetic, clearly labelled audit
 fixtures; the scenario tests invoke no privileged action. They cover rotations, copy-truncate, missing archives,
 partial lines, cursor/capture corruption, SSH failures, safe remote argument passing,
 enriched records, fragmented arguments, identities, paths, malformed input, replay,
@@ -543,7 +543,7 @@ config, threshold at `threshold_percentile` of baseline scores; `score` inserts
 `source='ml'` alerts — "unusual activity", anomaly score, top features, evidence links;
 same settle horizon and replay-idempotence as rules; refuses <20 baseline windows), the
 `train` CLI command, `pipeline --model`, and `eval/evaluate.py` (A=rules vs B=rules+ML,
-nearest-start matching, precision/recall/FPR/latency + per-scenario table). 125 tests pass.
+nearest-start matching, precision/recall/FPR/latency + per-scenario table). 134 tests pass.
 
 **Honest limitation:** model quality depends entirely on a rich, representative baseline.
 On a thin/uniform baseline the detector flags ordinary small windows and misses real
@@ -580,3 +580,94 @@ suspend; collect more varied/longer normal activity before any final model.
 
 The model (`data/model.joblib`) and all captures stay Git-ignored; record provenance
 (hashes, window counts, UTC interval, threshold) here when the runs land.
+
+## 11. Phase 8 dashboard + reports — 2026-11-28
+
+Implemented, local-only (reads the SQLite evidence DB; no VM, no AI): three EvidenceStore
+helpers (`list_alerts` with filters, `set_alert_status`, `related_events` basic correlation
+on pid/ppid/user/src_ip within +/-N min, plus `get_alert`); `linuxguard/reports.py`
+`incident_markdown` (standard-mode report, AI fallback); and `linuxguard/dashboard/app.py`
+(Streamlit: Overview, Alerts with status-setting + timeline + raw evidence + report download,
+Evaluation). `streamlit run linuxguard/dashboard/app.py`. FastAPI skipped. 133 tests pass
+(new: storage, reports, and a headless `streamlit.testing` smoke test). The Evaluation page
+populates once the 10× `test.db` + `labels.csv` exist.
+
+## 12. Phase 9 10x capture + Phase 10 A/B evaluation — 2026-11-28
+
+The 10x labelled scenario run completed (run_id `20261128T072137-d905c5`): **210 runs**
+(110 malicious, 100 benign across 21 scenarios x 10 repetitions). `auditctl -s` reported
+`enabled 1` / `lost 0` **before and after** (from `run.json`), so no records were dropped.
+The scenario interval (+/-120 s margin) was collected over the unprivileged agent (3,029
+events), ingested into a Git-ignored `test.db`, and scored with rules + the provisional ML
+model: 107 rule alerts, 21 ML alerts; integrity ok. `evaluate.py` was fixed to score each
+scenario *run* (keyed by scenario_id + repetition) rather than collapsing repetitions.
+
+**A (rules only) vs B (rules + ML), per scenario run:**
+
+| Config | Precision | Recall | FPR | TP | FP | FN | latency med/max |
+|---|---|---|---|---|---|---|---|
+| A rules | 1.00 | 0.80 | 0.00 | 88 | 0 | 22 | 0.0 / 0.5 s |
+| B rules+ML | 0.89 | 0.82 | 0.11 | 90 | 11 | 20 | 0.0 / 3.3 s |
+
+Rules caught every rule-targeted scenario (R01 shadow 9/10, R09 authkeys 9/10, the other
+seven 10/10) with **zero false positives**, and missed the two ML-only scenarios
+(ML-ENUM, ML-BINBURST) entirely — the 22 false negatives. Adding ML recovered only **2 of
+those 20 ML-target runs** (ENUM 1/10, BINBURST 1/10) while introducing **11 benign false
+positives** (notably BEN-FIND 4/10), dropping precision 1.00 -> 0.89 and raising FPR to 0.11.
+
+**Honest conclusion (proposal 10.7):** on this provisional, thin, scripted baseline ML did
+**not** clearly help — rules alone gave perfect precision at 0.80 recall, and ML traded a lot
+of precision for marginal recall. A richer/longer normal-only baseline (Phase 7.2) may change
+this and should be collected before drawing final conclusions; the numbers above are reported
+as-is, not tuned. Metrics JSON: `data/experiments/scenario-10x-.../evaluation.json` (ignored).
+
+Still pending for a full Phase 10: resource-use sampling (10.4), an ML threshold sweep
+(7.6/10.6), and the written results chapter/charts (Phase 12).
+
+## 13. Phase 12 report + remaining metrics — 2026-11-28
+
+Final technical report delivered as **`docs/REPORT.md`** (source of truth) and
+**`docs/LinuxGuard_Report_Group17.docx`** (submittable), with a committed architecture diagram
+(`docs/figures/architecture.svg/.png`) and result figures (`metrics_ab`, `per_scenario`,
+`threshold_sweep`). The two previously-missing proposal metrics were measured and added:
+
+- **Resource consumption:** host pipeline on the 3,029-event capture ~1.7 s (parse 0.25 / store
+  0.10 / rules 1.11 / ML 0.27), peak ~256 MiB RSS (mostly sklearn/NumPy import); train 0.12 s on
+  59 windows; VM auditd ~2.3 MiB at ~0% CPU; test.db 13 MiB, baseline.db 3.3 MiB, model 0.6 MiB.
+- **ML threshold sweep** (`eval/sweep.py`): recall flat at 0.82 across baseline percentiles
+  0.5–10 %; precision 0.89→0.83, FPR 0.11→0.19 — no threshold makes ML worthwhile.
+
+New code: `ml.window_scores` (shared by `score` and the sweep), `eval/sweep.py`,
+`eval/make_figures.py`; `code/requirements.txt` exported from `uv.lock`. 135 tests pass.
+Figures regenerate with `python eval/make_figures.py`; the DOCX rebuilds from a docx-js script
+(scratch) — re-run if `REPORT.md` changes. Report authored in the students' voice (no AI
+self-attribution inside the document). Remaining optional work: Phase 11 AI explanations and a
+richer ML baseline.
+
+## 14. Phase 11 AI explanations (local Ollama/Gemma) — 2026-11-28
+
+Implemented `linuxguard/ai.py`: `explain(alert, evidence, *, mode, model, endpoint, timeout) ->
+(text, mode_used)`. Modes: `standard` (local template, default + fallback), `local` (Ollama),
+`cloud` (disabled). Uses the standard library (urllib) — no new dependency; the `local-ai` extra
+stays unused. Strict prompt (explain only from evidence, say "unknown", never suggest commands).
+Wired into `reports.incident_markdown(..., explanation=...)`, the dashboard alert view (radio
+standard/local + "produced by" badge), and a new CLI `explain` command. Config gained `ai.model`
+and `ai.endpoint`; `timeout_seconds` raised to 120. Default `ai.mode` stays `standard` so a
+fresh checkout and the test suite never need Ollama. 140 tests pass (AI tests mock the model; a
+live test runs only with `LINUXGUARD_OLLAMA_TEST=1`).
+
+**Gotcha found and fixed:** the installed model `igorls/gemma-4-12B-it-heretic-GGUF:Q4_K_M` is a
+*thinking* model — it spent its token budget on hidden reasoning (`done_reason: length`) and
+returned an empty `response`. The client now sends `think:false` and falls back to the `thinking`
+field if `response` is empty.
+
+**Assessment (11.6), real alerts from the 10x test.db, model `…gemma-4-12B…`:**
+- Alert 1 (rule R01, shadow read): local output — "bonzo used cat to open /etc/shadow … shadow
+  file contains sensitive password hashes and is typically only accessed by privileged
+  processes." Clear, accurate, grounded; no invented facts, no commands.
+- Alert 108 (ML, unusual window): local output — summarised the window's tar/gzip/shell execs and
+  the sshd shadow read as unusual activity with an anomaly score. Consistent with the evidence.
+- Latency: ~37 s first call (model load), ~5 s after.
+- Fallback verified two ways: unreachable endpoint and empty model response both return the
+  template with mode "standard (fallback)"; detection/evaluation output is unchanged with AI on
+  or off. Local only (localhost) — no data leaves the host; cloud mode intentionally off.

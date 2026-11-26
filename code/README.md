@@ -1,9 +1,9 @@
 # LinuxGuard development
 
 The project foundation, incremental collector, batch audit parser, SQLite
-ingestion pipeline, configurable rule engine, a labelled scenario runner, and an
-Isolation Forest anomaly detector with an A/B evaluation are ready. Dashboard,
-reports and optional AI explanations are still pending; those modules are placeholders.
+ingestion pipeline, configurable rule engine, a labelled scenario runner, an Isolation
+Forest anomaly detector with an A/B evaluation, and a Streamlit investigation dashboard
+with incident reports are ready. Optional AI explanations are still pending.
 
 ## Setup and checks
 
@@ -16,7 +16,7 @@ uv run --locked --inexact python -m linuxguard check-config
 uv run --locked --inexact pytest
 ```
 
-Last verified 2026-11-28: **125 tests pass**.
+Last verified 2026-11-28: **140 tests pass**.
 
 `uv.lock` pins direct and transitive dependencies. `--inexact` keeps any unrelated
 packages already installed in the existing virtual environment. A fresh checkout
@@ -274,6 +274,54 @@ python3 eval/evaluate.py --test-db test.db --labels data/scenarios/<run_id>/labe
 A is the `source='rule'` alerts; B adds `source='ml'`, so both are measured on the same
 recorded log. Full Phase 10 (resource-use sampling, charts, the written results chapter)
 and an ML threshold sweep are future work.
+
+## Dashboard and incident reports (Phase 8)
+
+A Streamlit dashboard reads the evidence database directly — no AI, no VM access:
+
+```bash
+uv run --locked --inexact streamlit run linuxguard/dashboard/app.py
+```
+
+Pick the database in the sidebar (defaults to the configured one). **Overview** shows
+alert counts by severity and source (rule vs ML) and event volume over time. **Alerts**
+filters by source/severity/status/time, lets you set an alert's status
+(new/investigating/closed), shows its correlated **timeline** (events within +/-N minutes
+sharing pid/ppid/user/src_ip, evidence rows highlighted) and raw audit lines, and downloads
+a Markdown **incident report**. **Evaluation** runs the A-vs-B comparison once a labelled
+test database and `labels.csv` exist.
+
+The report is also available in code: `linuxguard.reports.incident_markdown(store, alert_id)`
+returns the standard-mode report (summary, severity/source, reason, timeline, raw evidence,
+next steps) for a rule or ML alert. It needs no AI and is the fallback for the future AI
+mode. A separate backend (FastAPI) is intentionally skipped — Streamlit reads SQLite directly.
+
+## AI explanations (Phase 11, optional)
+
+LinuxGuard can explain an alert in plain English. Three modes (`config/linuxguard.yaml`,
+`ai.mode`): `standard` (a local template, the default and the guaranteed fallback), `local`
+(a model served by Ollama), and `cloud` (intentionally disabled here). The model only produces
+text — it never influences detection or runs commands — and **any failure falls back to the
+template**, so detection, storage and reporting keep working whether or not a model is available.
+
+Local mode talks only to the Ollama endpoint (default `http://localhost:11434`), so **no data
+leaves the host**. The configured model is `igorls/gemma-4-12B-it-heretic-GGUF:Q4_K_M`
+(Gemma, 12B). The prompt is strict: explain only from the evidence, say "unknown" when unsure,
+never suggest commands. (Reasoning models return their answer in a `thinking` field, so the
+client sends `think:false` and falls back to that field if needed.)
+
+```bash
+# explain a stored alert from the terminal (standard template, or the local model)
+uv run --locked --inexact python -m linuxguard explain --database test.db --alert 1 --mode local
+# force the fallback (unreachable endpoint) — still returns a template explanation, never errors
+uv run --locked --inexact python -m linuxguard explain --database test.db --alert 1 --mode local --endpoint http://127.0.0.1:1
+```
+
+In the dashboard's alert view, the "AI explanation" control offers **standard** or **local
+model** and shows a "produced by: <mode>" badge, so you always know which mode produced the
+text; the downloaded incident report includes it. `linuxguard.ai.explain(alert, evidence, ...)`
+returns `(text, mode_used)`. No extra dependency is required (the client uses the standard
+library); the `local-ai` extra in `pyproject.toml` is optional and unused.
 
 ## SSH access to the VM
 
