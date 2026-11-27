@@ -1,0 +1,86 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="900" height="560" viewBox="0 0 900 560" font-family="Helvetica, Arial, sans-serif">
+  <defs>
+    <marker id="a" markerWidth="9" markerHeight="9" refX="7" refY="3" orient="auto">
+      <path d="M0,0 L7,3 L0,6 Z" fill="#334155"/>
+    </marker>
+    <style>
+      .box{fill:#f1f5f9;stroke:#334155;stroke-width:1.5;rx:8;}
+      .vm{fill:#e0ecff;stroke:#1d4ed8;}
+      .store{fill:#fef3c7;stroke:#b45309;}
+      .opt{fill:#f8fafc;stroke:#94a3b8;stroke-dasharray:5 4;}
+      .t{fill:#0f172a;font-size:14px;font-weight:bold;}
+      .s{fill:#475569;font-size:11px;}
+      .lbl{fill:#334155;font-size:11px;}
+      .e{stroke:#334155;stroke-width:1.6;fill:none;marker-end:url(#a);}
+    </style>
+  </defs>
+  <text x="20" y="28" class="t" font-size="18">LinuxGuard — architecture (proposal six-step workflow)</text>
+
+  <!-- VM source -->
+  <rect class="box vm" x="20" y="60" width="180" height="70"/>
+  <text x="110" y="88" text-anchor="middle" class="t">1. Target VM</text>
+  <text x="110" y="106" text-anchor="middle" class="s">Debian 13 · auditd</text>
+  <text x="110" y="120" text-anchor="middle" class="s">70-linuxguard.rules</text>
+
+  <!-- collector -->
+  <rect class="box" x="250" y="60" width="180" height="70"/>
+  <text x="340" y="88" text-anchor="middle" class="t">1–2. Collector</text>
+  <text x="340" y="106" text-anchor="middle" class="s">collector.py · reader.py</text>
+  <text x="340" y="120" text-anchor="middle" class="s">incremental, cursor</text>
+
+  <!-- parser -->
+  <rect class="box" x="480" y="60" width="180" height="70"/>
+  <text x="570" y="88" text-anchor="middle" class="t">2. Parser</text>
+  <text x="570" y="106" text-anchor="middle" class="s">parser.py</text>
+  <text x="570" y="120" text-anchor="middle" class="s">group · normalize</text>
+
+  <!-- storage -->
+  <rect class="box store" x="710" y="60" width="170" height="70"/>
+  <text x="795" y="88" text-anchor="middle" class="t">4. Evidence store</text>
+  <text x="795" y="106" text-anchor="middle" class="s">storage.py · SQLite</text>
+  <text x="795" y="120" text-anchor="middle" class="s">events · alerts · links</text>
+
+  <line class="e" x1="200" y1="95" x2="248" y2="95"/>
+  <line class="e" x1="430" y1="95" x2="478" y2="95"/>
+  <line class="e" x1="660" y1="95" x2="708" y2="95"/>
+  <text x="224" y="86" text-anchor="middle" class="lbl">SSH</text>
+
+  <!-- detection row -->
+  <rect class="box" x="250" y="210" width="180" height="76"/>
+  <text x="340" y="238" text-anchor="middle" class="t">3. Rule engine</text>
+  <text x="340" y="256" text-anchor="middle" class="s">rules.py · 10 rules</text>
+  <text x="340" y="270" text-anchor="middle" class="s">match + threshold</text>
+
+  <rect class="box" x="480" y="210" width="180" height="76"/>
+  <text x="570" y="238" text-anchor="middle" class="t">3. Isolation Forest</text>
+  <text x="570" y="256" text-anchor="middle" class="s">features.py · ml.py</text>
+  <text x="570" y="270" text-anchor="middle" class="s">source='ml' anomalies</text>
+
+  <line class="e" x1="795" y1="130" x2="795" y2="248"/>
+  <line class="e" x1="795" y1="248" x2="662" y2="248"/>
+  <line class="e" x1="428" y1="248" x2="340" y2="248" marker-end="url(#a)"/>
+  <text x="815" y="195" text-anchor="middle" class="lbl">events</text>
+  <line class="e" x1="340" y1="286" x2="340" y2="330"/>
+  <line class="e" x1="570" y1="286" x2="570" y2="330"/>
+  <text x="455" y="308" text-anchor="middle" class="lbl">evidence-linked alerts</text>
+
+  <!-- investigation -->
+  <rect class="box" x="250" y="330" width="410" height="76"/>
+  <text x="455" y="358" text-anchor="middle" class="t">5. Investigation</text>
+  <text x="455" y="376" text-anchor="middle" class="s">dashboard/app.py (Streamlit) · reports.py (Markdown incident reports)</text>
+  <text x="455" y="392" text-anchor="middle" class="s">timeline · raw evidence · set status</text>
+
+  <!-- evaluation -->
+  <rect class="box store" x="250" y="440" width="410" height="66"/>
+  <text x="455" y="466" text-anchor="middle" class="t">7. Evaluation — A (rules) vs B (rules + ML)</text>
+  <text x="455" y="484" text-anchor="middle" class="s">eval/evaluate.py · scenarios/run.py labels · precision / recall / FPR / latency</text>
+  <line class="e" x1="455" y1="406" x2="455" y2="438"/>
+
+  <!-- optional AI -->
+  <rect class="box opt" x="700" y="330" width="180" height="76"/>
+  <text x="790" y="356" text-anchor="middle" class="t" fill="#64748b">6. AI explain</text>
+  <text x="790" y="374" text-anchor="middle" class="s">ai.py — optional</text>
+  <text x="790" y="390" text-anchor="middle" class="s">not implemented;</text>
+  <text x="790" y="404" text-anchor="middle" class="s">template fallback used</text>
+  <line class="e" x1="660" y1="368" x2="698" y2="368" stroke-dasharray="5 4"/>
+</svg>
