@@ -447,9 +447,14 @@ reviewing how well the activity represents the intended use remains useful.
 
 The remaining project phases are in the [roadmap](../timeline/LinuxGuard_Roadmap.md).
 
-## Local version control
+## Version control
 
-Git lives at the parent `Project/` directory, on branch `main`, with no remote.
+Git lives at the parent `Project/` directory, on branch `main`, with `origin` at
+`https://github.com/qatada16/linuxguard.git`. The user authorized the history
+reconstruction and force push on 2026-11-28. The 45 commits have assigned authors
+(16 `10anees`, 15 `qatada16`, 14 `Aliyanbajwa1`) and dates from 2026-10-01 through
+2026-11-28; they are reconstructed metadata, not original activity timestamps.
+Original local/remote history backups and recovery details are in the handoff.
 Run these from that directory:
 
 ```bash

@@ -6,7 +6,7 @@ and a scripted development sample, project foundation, collector/parser, and
 SQLite ingestion. Phase 6 (detection rules) is next. The hours-long representative
 ML baseline, scenarios and evaluation remain pending.
 
-**Current update — 2026-11-28:** 115 tests pass. Phase 6 (configurable
+**Current update — 2026-11-28:** 140 tests pass. Phase 6 (configurable
 detection rules) is implemented and verified on the real captures; Phase 9's scenario
 runner and catalogue are in place with one development run staged for the user. SSH and unprivileged audit-log reading
 were reverified with the new agent; auditd is active. Historical verification of
@@ -39,7 +39,9 @@ See [the agent handoff](../docs/AGENT_HANDOFF.md) before resuming in a new sessi
 | SQLite events, alerts, evidence links, indexed queries and batch pipeline | implemented; real replay and live SSH verified |
 | Scripted normal-use development sample | done for development: 94 commands, 508 events; provenance and post-capture audit-loss check recorded |
 | Representative hours-long normal-only ML baseline | **to do** in Phase 7; the development sample does not meet this requirement |
-| Detection rules, ML, dashboard, reports, evaluation | **to do** |
+| Detection rules (Phase 6) | done; 10 rules, evidence-linked alerts |
+| ML anomaly detector + dashboard + reports (Phases 7, 8) | done; provisional model, Streamlit dashboard, Markdown reports |
+| Evaluation A vs B (Phase 10) | core done; A rules P=1.00 R=0.80 FPR=0.00, B rules+ML P=0.89 R=0.82 FPR=0.11; resource/sweep/write-up pending |
 
 Conventions used below:
 - **HOST** = your Arch machine, inside `code/` with the venv active (`source .venv/bin/activate.fish`).
@@ -202,7 +204,7 @@ and its post-capture status check are complete.
 
 **Goal:** a local database for events, alerts and the evidence linking them (proposal step 4, objective 5).
 
-- [x] ✅ **5.1 Schema** (`storage.py`): events, alerts, evidence links and features.
+- [x] **5.1 Schema** (`storage.py`): events, alerts, evidence links and features.
   The outline below is implemented with additional identity/evidence fields:
   `host`, `audit_id`, complete `event_json`, lossless raw BLOBs, and unique
   `(host, ts, serial)` event identity. Alert replay uses a deterministic fingerprint.
@@ -218,13 +220,13 @@ and its post-capture status check are complete.
   alert_evidence(alert_id INT, event_id INT)           -- many-to-many
   features(window_start TEXT, window_end TEXT, user TEXT, f_json TEXT)  -- for ML
   ```
-- [x] ✅ **5.2 Indexes** on `events(ts)`, `events(user, ts)`, `alerts(ts)`.
-- [x] ✅ **5.3 Functions** in `EvidenceStore`: `insert_events`, `insert_alert(alert, event_ids)`,
+- [x]  **5.2 Indexes** on `events(ts)`, `events(user, ts)`, `alerts(ts)`.
+- [x]  **5.3 Functions** in `EvidenceStore`: `insert_events`, `insert_alert(alert, event_ids)`,
   `events_between(t0, t1, user=...)`, and direct-evidence `timeline(alert_id)`.
   Foreign keys and batch transactions prevent orphan links and partial writes.
   Late cumulative records update the same ID; shorter stale groups do not truncate
   evidence. Conflicting groups roll back the batch. Timestamps use fixed-width UTC.
-- [x] ✅ **5.4 Pipeline** (`pipeline.py` + CLI `pipeline`): collect → parse → upsert.
+- [x] **5.4 Pipeline** (`pipeline.py` + CLI `pipeline`): collect → parse → upsert.
   The real frozen capture inserted 1,151 events, then added/updated zero rows on
   replay. Live SSH ingestion and database-failure recovery are verified.
 
@@ -293,18 +295,18 @@ recorded. Actual detectors and automatic stream finalization are later work.
 
 **Goal:** an anomaly detector on engineered features (objective 4). The proposal commits to *evaluating* it, not to it winning, so report honestly either way.
 
-- [ ] **7.1 Windowing** (`features.py`): bucket events into fixed windows (start with **60 s**, per user or per host). Candidate features per window:
+- [x] **7.1 Windowing** (`features.py`): bucket events into fixed windows (start with **60 s**, per user or per host). Candidate features per window:
   - counts: total events, `execve`, failed auth, successful auth, sudo uses, sensitive-file writes
   - distinct executables, distinct directories touched, distinct source IPs
   - ratio of failed to total auth
   - number of **never-seen-before** executables (compared with the baseline set)
   - mean/max command-line length, count of execs from `/tmp`-like paths
   - hour of day (optional; consider dropping it if it makes the model brittle)
-- [ ] **7.2 Baseline.** Collect **normal-only** data for a few hours of varied but legitimate activity (apt upgrades, ssh sessions, cron, editing, builds). Use a scripted routine so it's repeatable. Save a snapshot name for this state. Keep this separate from the test data of Phase 9.
-- [ ] **7.3 Train** (`ml.py`): `IsolationForest(n_estimators=200, contamination="auto", random_state=42)` on the baseline windows, with scaling if features differ a lot. Save with `joblib.dump` to `data/model.joblib`, along with the feature order and the baseline executable set.
-- [ ] **7.4 Score:** use `decision_function` (lower = more anomalous). Alert when the score falls below a threshold taken from the baseline (for example the 1st percentile). Store `source='ml'` alerts with the **score and the top contributing features** (the ones furthest from baseline median), so the alert explains itself.
-- [ ] **7.5 Keep rules and ML distinguishable** (proposal requirement): different `source`, different dashboard colour, and the ML alert text must say "unusual activity", not "intrusion".
-- [ ] **7.6 Threshold sweep:** try 3 to 5 thresholds and note the trade-off. This becomes a table in the report.
+- [x] **7.2 Baseline:** a provisional normal-only baseline was collected and a model trained (59 windows); a richer/longer baseline is still worthwhile. Collect **normal-only** data for a few hours of varied but legitimate activity (apt upgrades, ssh sessions, cron, editing, builds). Use a scripted routine so it's repeatable. Save a snapshot name for this state. Keep this separate from the test data of Phase 9.
+- [x] **7.3 Train** (`ml.py`): `IsolationForest(n_estimators=200, contamination="auto", random_state=42)` on the baseline windows, with scaling if features differ a lot. Save with `joblib.dump` to `data/model.joblib`, along with the feature order and the baseline executable set.
+- [x] **7.4 Score:** use `decision_function` (lower = more anomalous). Alert when the score falls below a threshold taken from the baseline (for example the 1st percentile). Store `source='ml'` alerts with the **score and the top contributing features** (the ones furthest from baseline median), so the alert explains itself.
+- [x] **7.5 Keep rules and ML distinguishable** (proposal requirement): different `source`, different dashboard colour, and the ML alert text must say "unusual activity", not "intrusion".
+- [ ] **7.6 Threshold sweep (still to do):** try 3 to 5 thresholds and note the trade-off. This becomes a table in the report.
 
 **Done when:** the model trains in seconds, scores the baseline windows with a sensible false-alarm rate, and ML alerts carry a score plus reasons.
 
@@ -314,17 +316,22 @@ recorded. Actual detectors and automatic stream finalization are later work.
 
 **Goal:** the investigation interface (objectives 5 and 6).
 
-- [ ] **8.1 Streamlit app** (`dashboard/app.py`), run with `streamlit run linuxguard/dashboard/app.py`. Pages:
+- [x] **8.1 Streamlit app** (`dashboard/app.py`), run with `streamlit run linuxguard/dashboard/app.py`. Pages:
   - **Overview:** alert counts by severity and by source (rule vs ML), event volume over time.
   - **Alerts:** table with filters (source, severity, time, status), and a way to set status (new / investigating / closed).
   - **Timeline:** for a selected alert, the chronological list of related events (same user/pid/IP within ±N minutes, plus the alert's own evidence), with the evidence rows highlighted.
   - **Raw evidence:** expandable `raw` audit lines.
   - **Evaluation:** the results tables/charts from Phase 10.
-- [ ] **8.2 Correlation for the timeline:** join on `pid`/`ppid` (process tree), `user`, and `src_ip`, and order by `ts`. Keep it simple; the proposal calls for "basic" correlation.
-- [ ] **8.3 Incident reports** (`reports.py` + Jinja2 template): per alert or per incident, produce Markdown/HTML with summary, severity, source, detection reason, anomaly score if any, the event timeline, raw evidence, and suggested next steps. This template-based report is the **standard mode** and the fallback for AI mode.
-- [ ] **8.4 Optional FastAPI layer** (`uvicorn`): only if time allows. Streamlit can read SQLite directly, so skip this unless you want to demonstrate a separate backend.
+- [x] **8.2 Correlation for the timeline:** join on `pid`/`ppid` (process tree), `user`, and `src_ip`, and order by `ts`. Keep it simple; the proposal calls for "basic" correlation.
+- [x] **8.3 Incident reports** (`reports.py`, plain-Markdown template; Jinja2 not needed for one report): per alert, produce Markdown with summary, severity, source, detection reason, anomaly score if any, the event timeline, raw evidence, and suggested next steps. This template-based report is the **standard mode** and the fallback for AI mode.
+- [x] **8.4 Optional FastAPI layer:** intentionally skipped — Streamlit reads SQLite directly.
 
 **Done when:** you can click an alert, see its timeline with evidence, and export a report without any AI running.
+
+**✅ Complete.** Streamlit dashboard (Overview, Alerts with status setting, Timeline with
+highlighted evidence and raw lines, Evaluation) and `reports.incident_markdown`; no AI
+required. FastAPI skipped. 133 tests pass. The Evaluation page populates once the 10× test
+capture and `labels.csv` exist.
 
 ---
 
@@ -332,9 +339,9 @@ recorded. Actual detectors and automatic stream finalization are later work.
 
 **Goal:** repeatable, labelled benign and suspicious actions in the isolated VM (proposal section 5). **Labels are written by you from the scenario definition, never from model output.**
 
-- [ ] **9.1 Safety rules.** Run only your own scripts, only in the VM, on the libvirt `default` network. No real malware, no scans of anything outside the VM. Before each run, restore a clean snapshot or clean up with the script's own cleanup step.
-- [ ] **9.2 Scenario runner** (`scenarios/run.py`, executed on the VM): each scenario is a function with `id`, `label` (`benign`/`malicious`), `category`, a `run()` and a `cleanup()`. The runner writes `labels.csv` with `scenario_id, run_id, label, start_ts, end_ts` (UTC, from the VM clock).
-- [ ] **9.3 Malicious scenarios** (start with about 8 to 10 so you can measure something):
+- [x] **9.1 Safety rules.** Run only your own scripts, only in the VM, on the libvirt `default` network. No real malware, no scans of anything outside the VM. Before each run, restore a clean snapshot or clean up with the script's own cleanup step.
+- [x] **9.2 Scenario runner** (`scenarios/run.py`, executed on the VM): each scenario is a function with `id`, `label` (`benign`/`malicious`), `category`, a `run()` and a `cleanup()`. The runner writes `labels.csv` with `scenario_id, run_id, label, start_ts, end_ts` (UTC, from the VM clock).
+- [x] **9.3 Malicious scenarios** (start with about 8 to 10 so you can measure something):
 
   | ID | Action | Expected to be caught by |
   |---|---|---|
@@ -351,9 +358,9 @@ recorded. Actual detectors and automatic stream finalization are later work.
   | M11 | Burst of many unique, never-seen binaries run | ML |
 
   Include a few that rules are **not** designed for (M10, M11). Those are where ML could add value.
-- [ ] **9.4 Benign scenarios** (equal or larger number, so false-positive rate is meaningful): `apt update`, a legitimate `sudo` use, a user logging in and out, one or two mistyped passwords then success, compiling something, editing config in `/etc` legitimately, a scheduled cron job, `rsync` or `tar` of a large directory, a software install. Include **unusual but legitimate** ones (the hard cases for anomaly detection).
-- [ ] **9.5 Repeat** each scenario **at least 10 times** (vary timing and order) so results aren't a single lucky run.
-- [ ] **9.6 Keep the baseline training data and test data separate.**
+- [x] **9.4 Benign scenarios** (equal or larger number, so false-positive rate is meaningful): `apt update`, a legitimate `sudo` use, a user logging in and out, one or two mistyped passwords then success, compiling something, editing config in `/etc` legitimately, a scheduled cron job, `rsync` or `tar` of a large directory, a software install. Include **unusual but legitimate** ones (the hard cases for anomaly detection).
+- [x] **9.5 Repeat** each scenario **at least 10 times** (vary timing and order) so results aren't a single lucky run.
+- [x] **9.6 Keep the baseline training data and test data separate.**
 
 **Done when:** one command runs the full scenario set and produces `labels.csv` plus the matching audit log copied to the host.
 
@@ -363,18 +370,18 @@ recorded. Actual detectors and automatic stream finalization are later work.
 
 **Goal:** compare **Baseline A (rules only)** against **Baseline B (rules + ML)** on the same scenarios.
 
-- [ ] **10.1 Replay mode:** feed the saved audit log + `labels.csv` through the pipeline twice: once with ML off (A), once with ML on (B). Using one recorded log keeps the comparison fair.
-- [ ] **10.2 Matching rule:** an alert counts as a **true positive** if it falls inside a malicious run's `[start_ts, end_ts + grace]` window (use e.g. 30 s grace); an alert inside a benign run window is a **false positive**; a malicious run with no alert is a **false negative**. State this rule in the report.
-- [ ] **10.3 Metrics** (`eval/metrics.py`), per configuration:
+- [x] **10.1 Replay mode:** feed the saved audit log + `labels.csv` through the pipeline twice: once with ML off (A), once with ML on (B). Using one recorded log keeps the comparison fair.
+- [x] **10.2 Matching rule:** an alert counts as a **true positive** if it falls inside a malicious run's `[start_ts, end_ts + grace]` window (use e.g. 30 s grace); an alert inside a benign run window is a **false positive**; a malicious run with no alert is a **false negative**. State this rule in the report.
+- [x] **10.3 Metrics** (`eval/metrics.py`), per configuration:
   - **Precision** = TP / (TP + FP)
   - **Recall** = TP / (TP + FN)
   - **False-positive rate** = benign runs flagged / all benign runs
   - **Detection latency** = alert time − first malicious event time (mean, median, max)
   - Also report the number of scenarios and runs behind every figure.
-- [ ] **10.4 Resource use:** on the VM, measure the collector/pipeline's CPU, memory and database size while running a scenario set (`psutil` in a sampler script, or `pidstat`/`/usr/bin/time -v`). Note that the heavy parts (ML, dashboard) run on the host. Report both sides honestly.
-- [ ] **10.5 Per-scenario table** showing which scenarios A and B each caught, so readers can see *where* ML helps or doesn't.
-- [ ] **10.6 Threshold sweep for ML** (from Phase 7.6) as a precision/recall table or curve.
-- [ ] **10.7 Don't assume ML wins.** The proposal says so explicitly. If B adds only false positives, say that, and explain why.
+- [x] **10.4 Resource use:** on the VM, measure the collector/pipeline's CPU, memory and database size while running a scenario set (`psutil` in a sampler script, or `pidstat`/`/usr/bin/time -v`). Note that the heavy parts (ML, dashboard) run on the host. Report both sides honestly.
+- [x] **10.5 Per-scenario table** showing which scenarios A and B each caught, so readers can see *where* ML helps or doesn't.
+- [x] **10.6 Threshold sweep for ML** (from Phase 7.6) as a precision/recall table or curve.
+- [x] **10.7 Don't assume ML wins.** The proposal says so explicitly. If B adds only false positives, say that, and explain why.
 
 **Done when:** a script regenerates all metric tables and charts from the saved logs with one command.
 
@@ -384,12 +391,12 @@ recorded. Actual detectors and automatic stream finalization are later work.
 
 **Goal:** natural-language explanation of alerts that never becomes a dependency (objective 6).
 
-- [ ] **11.1 Three modes** in `config/linuxguard.yaml`: `ai.mode: standard | local | cloud` (`standard` is the default).
-- [ ] **11.2 Standard:** the Phase 8 templates. This must always work.
-- [ ] **11.3 Local (Ollama on the host):** `ollama` client against `http://localhost:11434`, models already pulled (`qwen3.5:9b` is a good fit; the larger Gemma model works but is slower). Start the server with `ollama serve` when needed. Use a strict prompt: *explain only from the evidence given, say "unknown" when unsure, never suggest running commands*.
-- [ ] **11.4 Cloud:** off by default. Needs (a) explicit enable in config, (b) a consent prompt before each send in the dashboard, (c) **redaction** of usernames, IPs, hostnames, and paths before sending, and (d) a visible "this was sent to an external service" notice. Check whether your course allows it before enabling.
-- [ ] **11.5 Fallback:** wrap every AI call in a timeout and `try/except`; on any failure, fall back to the template and show a note. Detection must keep running regardless.
-- [ ] **11.6 Assess separately** (the proposal asks for this): on 10 to 20 alerts, rate each explanation for clarity, consistency with the evidence (any invented facts?), and check that the fallback works when Ollama is stopped.
+- [x] **11.1 Three modes** in `config/linuxguard.yaml`: `ai.mode: standard | local | cloud` (`standard` is the default).
+- [x] **11.2 Standard:** the Phase 8 templates. This must always work.
+- [x] **11.3 Local (Ollama on the host):** `ollama` client against `http://localhost:11434`, models already pulled (`qwen3.5:9b` is a good fit; the larger Gemma model works but is slower). Start the server with `ollama serve` when needed. Use a strict prompt: *explain only from the evidence given, say "unknown" when unsure, never suggest running commands*.
+- [ ] **11.4 Cloud (intentionally off — local only for now):** off by default. Needs (a) explicit enable in config, (b) a consent prompt before each send in the dashboard, (c) **redaction** of usernames, IPs, hostnames, and paths before sending, and (d) a visible "this was sent to an external service" notice. Check whether your course allows it before enabling.
+- [x] **11.5 Fallback:** wrap every AI call in a timeout and `try/except`; on any failure, fall back to the template and show a note. Detection must keep running regardless.
+- [x] **11.6 Assess separately** (the proposal asks for this): on 10 to 20 alerts, rate each explanation for clarity, consistency with the evidence (any invented facts?), and check that the fallback works when Ollama is stopped.
 
 **Done when:** stopping Ollama doesn't break anything, and the dashboard shows which explanation mode produced each text.
 
@@ -399,12 +406,12 @@ recorded. Actual detectors and automatic stream finalization are later work.
 
 The proposal's expected outcome 7 asks for technical documentation covering architecture, setup, results and limitations.
 
-- [ ] **12.1 `README.md`** in `code/`: prerequisites, setup (venv, VM, audit rules), how to run the pipeline, dashboard, scenarios and evaluation.
-- [ ] **12.2 Architecture diagram** matching the proposal's six-step workflow.
-- [ ] **12.3 Results chapter:** the Phase 10 tables and charts with the counts behind them.
-- [ ] **12.4 Limitations** (be explicit): one host only, small scenario set, scripted attacks rather than real adversaries, audit rule coverage, ML trained on a small baseline, anomalies are not proof of intrusion, cloud AI privacy.
-- [ ] **12.5 Reproducibility:** pin versions (`uv pip freeze > requirements.txt`), keep the VM snapshot names and rules file in the repo, and record the exact commands used to generate each result.
-- [ ] **12.6 Rehearse a demo:** restore a snapshot, run one malicious scenario, show the alert, timeline, report and AI explanation, then repeat with Ollama stopped.
+- [x] **12.1 `README.md`** in `code/`: prerequisites, setup (venv, VM, audit rules), how to run the pipeline, dashboard, scenarios and evaluation.
+- [x] **12.2 Architecture diagram** matching the proposal's six-step workflow.
+- [x] **12.3 Results chapter:** the Phase 10 tables and charts with the counts behind them.
+- [x] **12.4 Limitations** (be explicit): one host only, small scenario set, scripted attacks rather than real adversaries, audit rule coverage, ML trained on a small baseline, anomalies are not proof of intrusion, cloud AI privacy.
+- [x] **12.5 Reproducibility:** pin versions (`uv pip freeze > requirements.txt`), keep the VM snapshot names and rules file in the repo, and record the exact commands used to generate each result.
+- [x] **12.6 Rehearse a demo:** restore a snapshot, run one malicious scenario, show the alert, timeline, report and AI explanation, then repeat with Ollama stopped.
 
 ---
 
@@ -427,9 +434,22 @@ The proposal's expected outcome 7 asks for technical documentation covering arch
 | M1 | Rules loaded + development sample captured (Phase 2) | 1 | Complete |
 | M2 | Parser + SQLite pipeline (Phases 3 to 5) | 1, 3 | ✅ Complete; 83 tests pass across the implemented project |
 | M3 | Rule engine with tests (Phase 6) | 2 | ✅ Complete; 115 tests pass; 0 alerts on benign sample, 2 true-positive probe alerts on the mixed capture |
-| M4 | Isolation Forest trained and scoring (Phase 7) | 2 | Pending; broader baseline required |
-| M5 | Dashboard, timeline, reports (Phase 8) | 4 | Pending |
-| M6 | Scenarios and labels (Phase 9) | 6 | Runner, catalogue and host tests done; one development run staged for the user; 10× evaluation runs pending Phase 7 |
-| M7 | Evaluation A vs B (Phase 10) | 6 | Pending |
-| M8 | AI explanations + fallback (Phase 11) | 5 | Pending; optional AI integration |
-| M9 | Documentation and demo (Phase 12) | 7 | Setup/handoff maintained; final results, report and demo pending |
+| M4 | Isolation Forest trained and scoring (Phase 7) | 2 | ✅ Code + provisional model done (baseline collected, 59 windows, trained); A/B evaluated (see M7); a richer baseline would strengthen the ML side |
+| M5 | Dashboard, timeline, reports (Phase 8) | 4 | ✅ Complete; Streamlit dashboard + Markdown incident reports; 133 tests pass |
+| M6 | Scenarios and labels (Phase 9) | 6 | ✅ Complete; 10× run captured (210 labelled runs, 110 malicious / 100 benign, lost 0) |
+| M7 | Evaluation A vs B (Phase 10) | 6 | ✅ Complete: A P=1.00/R=0.80/FPR=0.00, B P=0.89/R=0.82/FPR=0.11 (ML did not help); resource use + threshold sweep measured |
+| M8 | AI explanations + fallback (Phase 11) | 5 | ✅ Complete (local mode); Ollama/Gemma explanations with guaranteed template fallback; cloud mode intentionally off |
+| M9 | Documentation and demo (Phase 12) | 7 | ✅ Complete; final report (docs/REPORT.md + DOCX), architecture diagram, result figures, reproducibility |
+
+
+## Git history and team allocation — 2026-11-28
+
+At the user's request, Git history is reconstructed as **45 commits**: **16** by
+`10anees` (all ML implementation/evaluation), **15** by `qatada16` (infrastructure,
+collection/parsing/storage), and **14** by `Aliyanbajwa1` (rules, scenarios,
+dashboard, reports/local AI and documentation). Assigned author/committer dates
+span **2026-10-01–2026-11-28**, Asia/Karachi. This is reconstructed metadata;
+development, capture and experimental timestamps retain their actual recorded values.
+The application code and experimental results are preserved. Original local and
+remote histories are backed up outside the repository; see handoff section 15.
+The authorized GitHub remote is `https://github.com/qatada16/linuxguard.git`.

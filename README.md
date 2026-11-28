@@ -14,4 +14,9 @@ are configured and verified, and the `rules-loaded` snapshot exists. Incremental
 SSH/local-file collection and batch audit normalization are implemented. Storage,
 detection, dashboard, and evaluation modules are still placeholders.
 
-Work stays in this local repository. No remote or publishing service is required.
+Repository: [qatada16/linuxguard](https://github.com/qatada16/linuxguard).
+
+The Git history was reconstructed at the maintainer's request on 2026-11-28:
+45 commits with assigned authors and dates spanning 2026-10-01–2026-11-28.
+It is not the original development chronology. Recovery information is in the
+[agent handoff](docs/AGENT_HANDOFF.md). Real captures, databases and models remain local.

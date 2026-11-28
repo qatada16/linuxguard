@@ -10,7 +10,9 @@ VM address can change.
 ## 1. Scope, authorization, and remaining user involvement
 
 The user requested that the agent implement what it can, guide them step by step,
-and keep version control local. They explicitly completed SSH-key installation,
+and originally keep version control local. On 2026-11-28 they subsequently
+authorized the reconstructed 45-commit history and force push to
+`https://github.com/qatada16/linuxguard.git` (section 15). They explicitly completed SSH-key installation,
 unlocked the key in an agent, shared its socket path for agent use, and ran the
 prepared VM audit setup using their VM sudo password.
 
@@ -18,7 +20,8 @@ Authorized project work includes local implementation, verification, local Git,
 and setup/collection against this designated lab VM. Continue within that scope
 without repeating permission questions for already authorized steps. This record
 does not supply credentials, bypass machine permissions, or authorize unrelated
-systems, publication, external data sharing, or destructive snapshot restores.
+systems, publication or data sharing beyond the explicitly authorized GitHub
+repository, or destructive snapshot restores.
 
 | Capability | Current state | User involvement |
 |---|---|---|
@@ -42,7 +45,7 @@ account. A new agent session still needs access to this same machine and account
 | Python project | `code/` inside the repository |
 | Virtual environment | `code/.venv`, Python 3.12 |
 | Package and lock | `code/pyproject.toml`, `code/uv.lock` |
-| Git | Branch `main`, no remote |
+| Git | Branch `main`; `origin` is `https://github.com/qatada16/linuxguard.git`; reconstructed 45-commit history |
 | VM management | `virsh -c qemu:///system` |
 | VM name / guest hostname | `debian13` / `linuxguard-target` |
 | Guest OS / architecture | Debian 13 / x86_64 |
@@ -671,3 +674,46 @@ field if `response` is empty.
 - Fallback verified two ways: unreachable endpoint and empty model response both return the
   template with mode "standard (fallback)"; detection/evaluation output is unchanged with AI on
   or off. Local only (localhost) — no data leaves the host; cloud mode intentionally off.
+
+
+## 15. Git history reconstruction and GitHub publication — 2026-11-28
+
+The user supplied the following author identities and explicitly authorized replacing
+local history and force-pushing `main` to `https://github.com/qatada16/linuxguard.git`:
+
+| Author | Email | Commits | Assigned work |
+|---|---|---|---|
+| `10anees` | `aneeshamid123@gmail.com` | 16 | Features, Isolation Forest training/scoring, model persistence, baseline limits, ML evaluation and sweeps |
+| `qatada16` | `pivotone106@gmail.com` | 15 | Packaging/configuration, VM audit setup, collector, parser, SQLite and ingestion |
+| `Aliyanbajwa1` | `aliyan9817@gmail.com` | 14 | Detection rules, scenarios/cleanup, dashboard, reports/local AI, final documentation |
+
+Author and committer dates are assigned from 2026-10-01 through 2026-11-28 in
+Asia/Karachi (+05:00). This is a **reconstructed history**, not the original record
+of who executed each development action or when. Commit bodies identify that fact.
+The original application code, tests, report artifacts and recorded experimental
+timestamps are preserved. Only Git workflow/provenance notes are updated in the
+final tree. Baseline quality and experimental limitations remain as originally recorded.
+
+Recovery artifacts are outside the repository, never part of the published history:
+
+```text
+/home/phoenix/Documents/7th Sem/IS/LinuxGuard-history-backups/2026-11-28-rewrite-ye6nj7o6
+```
+
+- `original-local.bundle`: the original local refs and 21-commit history ending at
+  `aac0b6994598537ddca226f0b0a013ed01a859b0`.
+- `original-git-metadata.tar.gz`: original local `.git`, including configuration.
+- `original-remote.bundle` and `original-remote.git`: GitHub history before replacement;
+  original remote `main` was `1a79534b921330f101fc522a7c15745afcd6895d`.
+- `state.json`, `reconstruct.py`, `commit-plan.csv`, `commit-plan.json` and
+  `verification.json`: provenance, reproducible reconstruction and verification receipts.
+
+To inspect the old history separately, clone the relevant bundle into a new
+directory, for example `git clone /actual/backup/path/original-local.bundle recovered-linuxguard`.
+Do not reset the current checkout merely to inspect old evidence. Old commit IDs
+in local capture/model provenance refer to the archived original history; do not
+rewrite audit timestamps or dataset provenance to match the assigned Git dates.
+
+The push uses an explicit `--force-with-lease` against the inspected remote tip,
+so a concurrent new commit stops replacement. Only remote `main` is targeted;
+other branches, tags and historical pull requests are outside this operation.
